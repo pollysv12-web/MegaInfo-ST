@@ -1,0 +1,312 @@
+/* MegaInfo — все цвета берутся из темы SillyTavern, поэтому блоки подстраиваются под неё. */
+
+.mi-host {
+    --mi-text: var(--SmartThemeBodyColor);
+    --mi-accent: var(--SmartThemeQuoteColor);
+    --mi-muted: color-mix(in srgb, var(--SmartThemeBodyColor) 55%, transparent);
+    --mi-faint: color-mix(in srgb, var(--SmartThemeBodyColor) 8%, transparent);
+    --mi-line: color-mix(in srgb, var(--SmartThemeBodyColor) 14%, transparent);
+    --mi-bg: color-mix(in srgb, var(--SmartThemeBotMesBlurTintColor, var(--SmartThemeBlurTintColor)) 70%, transparent);
+    --mi-up: #6fcf97;
+    --mi-down: #eb7a7a;
+    --mi-warn: #f2b94b;
+    --mi-radius: 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0;
+    max-width: 100%;
+    font-size: calc(var(--mainFontSize, 15px) * 0.86);
+    line-height: 1.4;
+    color: var(--mi-text);
+}
+
+.mi-host i.fa-solid,
+.mi-host i.fa-regular {
+    margin-right: 5px;
+    opacity: .75;
+}
+
+/* ---------- контейнер блока ---------- */
+.mi-block {
+    border: 1px solid var(--mi-line);
+    border-radius: var(--mi-radius);
+    background: var(--mi-bg);
+    overflow: hidden;
+}
+
+.mi-style-glass .mi-block {
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 4%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--SmartThemeShadowColor, #000) 25%, transparent);
+}
+
+.mi-style-minimal .mi-block {
+    background: transparent;
+    border: none;
+    border-left: 2px solid var(--mi-accent);
+    border-radius: 0;
+}
+
+.mi-style-solid .mi-block {
+    background: var(--SmartThemeBlurTintColor);
+    border-color: color-mix(in srgb, var(--mi-accent) 45%, transparent);
+}
+
+/* ---------- шапка ---------- */
+.mi-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 14px;
+    padding: 7px 12px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.mi-head::-webkit-details-marker { display: none; }
+.mi-block[open] > .mi-head { border-bottom: 1px solid var(--mi-line); }
+.mi-style-solid .mi-block[open] > .mi-head { background: color-mix(in srgb, var(--mi-accent) 10%, transparent); }
+
+.mi-head-main,
+.mi-head-sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+}
+.mi-head-main { font-weight: 600; }
+.mi-head-sub { color: var(--mi-muted); }
+.mi-passed {
+    margin-left: 6px;
+    font-weight: 400;
+    font-size: .85em;
+    color: var(--mi-muted);
+}
+
+.mi-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+}
+.mi-act {
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 6px;
+    opacity: .45;
+    transition: opacity .15s, background .15s;
+}
+.mi-act:hover {
+    opacity: 1;
+    background: var(--mi-faint);
+}
+.mi-host .mi-actions i.mi-act { margin-right: 0; }
+
+/* ---------- тело ---------- */
+.mi-body {
+    padding: 8px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mi-people {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 8px;
+}
+
+.mi-person {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--mi-faint);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.mi-style-minimal .mi-person { background: transparent; padding: 4px 0; }
+.mi-role-npc { opacity: .92; }
+
+.mi-name {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.mi-badge {
+    font-size: .72em;
+    font-weight: 600;
+    letter-spacing: .5px;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--mi-line);
+    color: var(--mi-muted);
+    margin-left: 4px;
+}
+
+/* слайдеры */
+.mi-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.mi-stat {
+    display: grid;
+    grid-template-columns: minmax(92px, auto) 1fr auto;
+    align-items: center;
+    gap: 8px;
+}
+.mi-stat-label {
+    color: var(--mi-muted);
+    white-space: nowrap;
+}
+.mi-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--mi-faint);
+    overflow: hidden;
+}
+.mi-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--mi-accent);
+    transition: width .4s ease;
+}
+.mi-stat-val {
+    min-width: 62px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.mi-crit .mi-bar-fill { background: var(--mi-warn); }
+.mi-crit .mi-stat-label,
+.mi-crit .mi-stat-val { color: var(--mi-warn); }
+
+/* компактный вид */
+.mi-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.mi-chip {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--mi-line);
+    font-variant-numeric: tabular-nums;
+}
+.mi-chip.mi-crit { border-color: var(--mi-warn); color: var(--mi-warn); }
+
+.mi-delta {
+    margin-left: 4px;
+    font-size: .8em;
+}
+.mi-up { color: var(--mi-up); }
+.mi-down { color: var(--mi-down); }
+
+.mi-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.mi-tag {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--mi-faint);
+    max-width: 100%;
+}
+
+.mi-thought {
+    font-style: italic;
+    padding: 5px 8px;
+    border-left: 2px solid var(--mi-accent);
+    border-radius: 0 6px 6px 0;
+    background: color-mix(in srgb, var(--mi-accent) 7%, transparent);
+}
+
+/* общая информация */
+.mi-more > summary {
+    cursor: pointer;
+    list-style: none;
+    color: var(--mi-muted);
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    font-weight: 600;
+}
+.mi-more > summary::-webkit-details-marker { display: none; }
+.mi-more[open] > summary { margin-bottom: 6px; }
+
+.mi-profiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+}
+.mi-profile > div { padding: 1px 0; }
+.mi-profile-name { font-weight: 600; margin-bottom: 2px; }
+.mi-k {
+    color: var(--mi-muted);
+    margin-right: 5px;
+}
+.mi-money { color: var(--mi-warn); }
+
+.mi-tx {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+}
+.mi-tx-item {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--mi-faint);
+}
+.mi-tx-who {
+    margin-left: 6px;
+    color: var(--mi-muted);
+    font-size: .85em;
+}
+
+/* служебные плашки */
+.mi-pending,
+.mi-missing,
+.mi-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    color: var(--mi-muted);
+}
+.mi-error { color: var(--mi-warn); border-color: color-mix(in srgb, var(--mi-warn) 40%, transparent); }
+.mi-missing .menu_button { margin: 0 0 0 auto; padding: 2px 10px; }
+
+/* телефоны */
+@media (max-width: 760px) {
+    .mi-people { grid-template-columns: 1fr; }
+    .mi-stat { grid-template-columns: minmax(84px, auto) 1fr auto; gap: 6px; }
+    .mi-head { padding: 6px 10px; }
+    .mi-body { padding: 6px 10px 8px; }
+}
+
+/* ---------- панель настроек ---------- */
+.megainfo-settings .mi-set-h { margin: 10px 0 4px; }
+.megainfo-settings .mi-set-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+.megainfo-settings .mi-set-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0 10px;
+}
+.megainfo-settings .mi-set-sub {
+    margin: 8px 0 4px;
+    opacity: .8;
+}
+.megainfo-settings .mi-stat-table {
+    display: grid;
+    grid-template-columns: 1fr 90px;
+    gap: 2px 10px;
+    align-items: center;
+}
+.megainfo-settings .mi-tokens { margin: 4px 0 8px; }
+.megainfo-settings .mi-tok-table { width: 100%; border-collapse: collapse; }
+.megainfo-settings .mi-tok-table td { padding: 3px 4px; border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent); }
+.megainfo-settings .mi-tok-val { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.megainfo-settings .mi-tok-kind { opacity: .6; font-size: .85em; white-space: nowrap; }
+.megainfo-settings .mi-tok-note { opacity: .7; font-size: .85em; margin-top: 6px; }
