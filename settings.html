@@ -1,0 +1,131 @@
+<div class="megainfo-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>MegaInfo · инфоблоки</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="enabled">
+                <span>Включить расширение</span>
+            </label>
+
+            <h4 class="mi-set-h">Внешний вид</h4>
+            <div class="mi-set-row">
+                <label>Стиль блоков</label>
+                <select class="text_pole" data-mi-setting="style">
+                    <option value="glass">Стекло</option>
+                    <option value="minimal">Минимал</option>
+                    <option value="solid">Плотный</option>
+                </select>
+            </div>
+            <div class="mi-set-row">
+                <label>Где показывать</label>
+                <select class="text_pole" data-mi-setting="placement">
+                    <option value="top">Перед текстом ответа</option>
+                    <option value="bottom">После текста ответа</option>
+                </select>
+            </div>
+            <div class="mi-set-row">
+                <label title="Старые блоки скрываются, чтобы не загромождать чат. Данные не теряются. 0 = показывать везде.">Показывать на последних N сообщениях</label>
+                <input type="number" class="text_pole" min="0" max="999" data-mi-setting="showOnLast">
+            </div>
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="hideWhileStreaming">
+                <span>Прятать сырой блок, пока модель печатает</span>
+            </label>
+
+            <hr>
+            <h4 class="mi-set-h"><i class="fa-solid fa-heart-pulse"></i> Sims</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="sims.enabled">
+                <span>Включить блок sims</span>
+            </label>
+
+            <div class="mi-set-row">
+                <label>Как получать блок</label>
+                <select class="text_pole" data-mi-setting="sims.mode">
+                    <option value="auto">Авто: в ответе, а если не пришёл — отдельным запросом</option>
+                    <option value="inline">Только в ответе (дешевле всего)</option>
+                    <option value="separate">Только отдельным запросом (надёжнее, дороже)</option>
+                </select>
+            </div>
+            <div class="mi-set-row">
+                <label title="Можно выбрать более дешёвую модель для отдельных запросов. Профили создаются в меню «Менеджер подключений» (значок вилки сверху).">Подключение для отдельного запроса</label>
+                <select class="text_pole" data-mi-setting="sims.profileId" id="megainfo_profile_select"></select>
+            </div>
+            <div class="mi-set-grid">
+                <div class="mi-set-row">
+                    <label title="Сколько последних сообщений чата видит отдельный запрос">Сообщений контекста</label>
+                    <input type="number" class="text_pole" min="1" max="30" data-mi-setting="sims.contextMessages">
+                </div>
+                <div class="mi-set-row">
+                    <label title="Максимальная длина ответа для отдельного запроса">Лимит ответа (токены)</label>
+                    <input type="number" class="text_pole" min="200" max="4000" step="50" data-mi-setting="sims.maxTokens">
+                </div>
+                <div class="mi-set-row">
+                    <label title="0 = инструкция в самом конце промпта (рекомендуется). Чем больше, тем глубже в истории.">Глубина инструкции</label>
+                    <input type="number" class="text_pole" min="0" max="20" data-mi-setting="sims.depth">
+                </div>
+            </div>
+
+            <div class="mi-set-grid">
+                <div class="mi-set-row">
+                    <label>Вид</label>
+                    <select class="text_pole" data-mi-setting="sims.view">
+                        <option value="bars">Слайдеры</option>
+                        <option value="chips">Компактно (текстом)</option>
+                    </select>
+                </div>
+                <div class="mi-set-row">
+                    <label>Сколько NPC показывать</label>
+                    <input type="number" class="text_pole" min="0" max="6" data-mi-setting="sims.npcMax">
+                </div>
+                <div class="mi-set-row">
+                    <label>Подробность NPC</label>
+                    <select class="text_pole" data-mi-setting="sims.npcDetail">
+                        <option value="short">Коротко: настроение и одежда</option>
+                        <option value="full">Полностью: статы и мысли</option>
+                    </select>
+                </div>
+            </div>
+
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="sims.collapsed">
+                <span>Блок свёрнут по умолчанию</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="sims.showMoney">
+                <span>Деньги</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-mi-setting="sims.showProfile">
+                <span>Общая информация (д/р, знак, MBTI)</span>
+            </label>
+            <div class="mi-set-row">
+                <label>Валюта</label>
+                <input type="text" class="text_pole" maxlength="5" data-mi-setting="sims.currency">
+            </div>
+
+            <div class="mi-set-sub">Статы и их изменение за 2 часа времени в ролевой</div>
+            <div class="mi-stat-table">
+                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.food.on"><span>Сытость</span></label>
+                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.food.decay">
+                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.hygiene.on"><span>Гигиена</span></label>
+                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.hygiene.decay">
+                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.energy.on"><span>Бодрость</span></label>
+                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.energy.decay">
+                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.arousal.on"><span>Возбуждение</span></label>
+                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.arousal.decay">
+            </div>
+
+            <hr>
+            <h4 class="mi-set-h"><i class="fa-solid fa-coins"></i> Расход токенов</h4>
+            <div id="megainfo_tokens" class="mi-tokens">Откройте чат, чтобы посчитать.</div>
+            <div class="menu_button menu_button_icon" id="megainfo_tokens_refresh">
+                <i class="fa-solid fa-calculator"></i><span>Пересчитать</span>
+            </div>
+        </div>
+    </div>
+</div>
