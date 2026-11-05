@@ -63,7 +63,7 @@ globalThis.megaInfoInterceptor = async function (chat, _contextSize, _abort, typ
         const targetId = (type === 'swipe' || type === 'continue') ? c.chat.length - 1 : c.chat.length;
         const { text, request } = injectionFor(targetId);
         if (text) {
-            c.setExtensionPrompt(PROMPT_KEY, text, 1 /* IN_CHAT */, Number(s.depth) || 0, false, 0 /* SYSTEM */);
+            c.setExtensionPrompt(PROMPT_KEY, text, 1 /* IN_CHAT */, Number(s.depth) || 0, false, s.injectRole === 'system' ? 0 : 1 /* USER */);
             Log.info(`→ #${targetId} (${type ?? 'normal'}): ${request.size ? 'прошу блок: ' + [...request].join(', ') : 'только напоминание о состоянии'}`, { chars: text.length });
         } else {
             clearInjection();

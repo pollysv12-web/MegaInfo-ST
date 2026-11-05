@@ -4,13 +4,34 @@
 import { getSettings, VERSION } from './settings.js';
 
 const MAX = 300;
-const entries = [];
+const STORE_KEY = 'megainfo_log';
+const entries = loadSaved();
 const listeners = new Set();
+let saveTimer = null;
+
+// Журнал переживает перезагрузку страницы — чтобы его можно было скопировать после игры.
+function loadSaved() {
+    try {
+        const list = JSON.parse(localStorage.getItem(STORE_KEY) ?? '[]');
+        return Array.isArray(list) ? list.slice(-MAX) : [];
+    } catch {
+        return [];
+    }
+}
+
+function persist() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(entries.slice(-MAX))); } catch { /* нет места */ }
+    }, 500);
+}
 
 export function log(level, msg, data) {
-    const entry = { t: new Date().toISOString().slice(11, 19), level, msg, data: data === undefined ? undefined : shorten(data) };
+    const d = new Date();
+    const entry = { t: `${d.toLocaleDateString('ru-RU').slice(0, 5)} ${d.toLocaleTimeString('ru-RU')}`, level, msg, data: data === undefined ? undefined : shorten(data) };
     entries.push(entry);
     if (entries.length > MAX) entries.shift();
+    persist();
     const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.debug;
     fn('[MegaInfo]', msg, data ?? '');
     for (const l of listeners) {
@@ -43,6 +64,7 @@ export function getEntries() {
 
 export function clearLog() {
     entries.length = 0;
+    persist();
 }
 
 /** Текстовый отчёт для копирования. */
@@ -55,7 +77,7 @@ export function report() {
         `MegaInfo ${VERSION}`,
         `API: ${c.mainApi ?? '?'} · модель: ${safe(() => c.getChatCompletionModel?.())} · стриминг: ${safe(() => c.chatCompletionSettings?.stream_openai)}`,
         `Хук форматирования: ${c.messageFormatter?.addHook ? 'есть' : 'нет (старая таверна)'} · менеджер подключений: ${c.ConnectionManagerRequestService ? 'есть' : 'нет'}`,
-        `Режим: ${s.mode} / отдельный запрос: ${s.separateKind} / профиль: ${s.profileId || 'текущий'}`,
+        `Режим: ${s.mode} / отдельный запрос: ${s.separateKind} / профиль: ${s.profileId || 'текущий'} / инструкция как: ${s.injectRole}`,
         `Модули: ${enabled}`,
         `Сообщений в чате: ${c.chat?.length ?? 0}`,
         '',

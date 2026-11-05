@@ -129,6 +129,7 @@ export async function initSettingsUi(h) {
     $('#megainfo_export_diary').on('click', exportDiary);
     $('#megainfo_copy_report').on('click', () => copyText(Log.report()));
     $('#megainfo_show_prompt').on('click', showPrompt);
+    $('#megainfo_clear_log').on('click', () => { Log.clearLog(); renderLog(); });
     $('#megainfo_places').on('click', showPlaces);
     $('#megainfo_quick_open').on('click', () => openQuickMenu(() => { loadValues(); hooks.onChange(); }));
 

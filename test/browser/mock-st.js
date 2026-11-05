@@ -67,9 +67,11 @@
                 addHook(fn, { stage = 'afterMarkdown' } = {}) { hooks[stage].push({ fn }); },
             },
             async generateRaw({ prompt, systemPrompt }) {
-                const text = state.model('raw', { system: systemPrompt, user: prompt?.[0]?.content ?? '' });
-                state.quietPrompts.push({ system: systemPrompt, user: prompt?.[0]?.content });
-                return text;
+                state.quietPrompts.push({ system: systemPrompt, prompt });
+                // как Gemini через OpenRouter: запрос, который кончается ответом бота, — Bad Request
+                if (prompt.at(-1)?.role !== 'user') throw new Error('Bad Request');
+                if (window.__rawFailWithHistory && prompt.length > 1) throw new Error('Bad Request');
+                return state.model('raw', { system: systemPrompt, user: prompt.at(-1).content });
             },
             async generateQuietPrompt({ quietPrompt }) {
                 const core = await buildPrompt('quiet');

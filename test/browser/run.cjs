@@ -195,7 +195,22 @@ function check(name, ok, info = '') {
     const full = await lastBot();
     const q = await page.evaluate(() => window.__st.quietPrompts.at(-1));
     check('full: блок пришёл через полный запрос', !!full.data?.state && (await page.evaluate(() => window.__st.quietPrompts.length)) > qBefore);
-    check('full: в истории полного запроса нет блоков', q.core.every((m) => !/<megainfo/.test(m.mes)));
+    check('full: есть история с ролями и последней репликой пользователя', q.prompt.length > 2 && q.prompt.at(-1).role === 'user', String(q.prompt.length));
+    check('full: в истории полного запроса нет блоков', q.prompt.slice(0, -1).every((m) => !/<megainfo/.test(m.content)));
+    // полный запрос падает с Bad Request → сам повторяет лёгким
+    await page.evaluate(() => { window.__rawFailWithHistory = true; });
+    await send('full падает', 'good');
+    const fb = await lastBot();
+    const flog = await page.evaluate(() => document.querySelector('#megainfo_log').innerText);
+    check('full: Bad Request → автоповтор лёгким запросом', !!fb.data?.state && !fb.data?.err && /пробую ещё раз \(light\)/.test(flog));
+    await page.evaluate(() => { window.__rawFailWithHistory = false; });
+
+    // ---------------------------------------------------------- 6e. регулярка срезала только теги, JSON остался
+    await page.evaluate(() => { const s = window.__st.extensionSettings.megainfo; s.mode = 'inline'; window.__st.outputRegex = /<\/?megainfo>/g; });
+    await send('теги срезаны', 'good');
+    const br = await lastBot();
+    check('теги срезаны регуляркой → JSON в конце всё равно найден', !!br.data?.state && !/"date"/.test(br.mes), br.mes.slice(-80));
+    await page.evaluate(() => { window.__st.outputRegex = null; window.__st.extensionSettings.megainfo.mode = 'separate'; });
     await page.evaluate(() => { const s = window.__st.extensionSettings.megainfo; s.mode = 'auto'; s.separateKind = 'light'; });
 
     // ---------------------------------------------------------- 6d. продолжение ответа

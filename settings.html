@@ -100,7 +100,7 @@
                         <label>Отдельный запрос</label>
                         <select class="text_pole" data-mi-setting="separateKind">
                             <option value="light">Лёгкий: последние сообщения + инструкция (дёшево)</option>
-                            <option value="full">Полный: весь чат, карточка и пресет (дорого, но с вашим джейлбрейком)</option>
+                            <option value="full">Полный: последние 60 сообщений + описание персонажа и персоны (дороже, точнее)</option>
                         </select>
                     </div>
                     <div class="mi-set-row">
@@ -120,6 +120,13 @@
                             <label title="0 = инструкция в самом конце промпта (рекомендуется).">Глубина инструкции</label>
                             <input type="number" class="text_pole" min="0" max="20" data-mi-setting="depth">
                         </div>
+                    </div>
+                    <div class="mi-set-row">
+                        <label title="Gemini через OpenRouter и Claude переносят системные сообщения в начало запроса — тогда инструкция теряется. «От пользователя» оставляет её рядом с вашей последней репликой.">Инструкцию вставлять как</label>
+                        <select class="text_pole" data-mi-setting="injectRole">
+                            <option value="user">Сообщение пользователя (надёжнее для Gemini, Claude)</option>
+                            <option value="system">Системное сообщение</option>
+                        </select>
                     </div>
                     <label class="checkbox_label" title="Модель видит текущие числа, место, следы и слухи, даже когда блок в этот раз не нужен. Так она не путается.">
                         <input type="checkbox" data-mi-setting="remindState"><span>Напоминать модели текущее состояние в каждом запросе</span>
@@ -448,6 +455,7 @@
                 <div class="menu_button menu_button_icon" id="megainfo_export_md" title="То же, но читаемым текстом"><i class="fa-solid fa-file-lines"></i><span>Логи текстом</span></div>
                 <div class="menu_button menu_button_icon" id="megainfo_copy_report" title="Скопировать отчёт для разработчика"><i class="fa-solid fa-stethoscope"></i><span>Скопировать диагностику</span></div>
                 <div class="menu_button menu_button_icon" id="megainfo_show_prompt" title="Показать, что сейчас уйдёт модели"><i class="fa-solid fa-eye"></i><span>Что видит модель</span></div>
+                <div class="menu_button menu_button_icon" id="megainfo_clear_log" title="Очистить журнал диагностики"><i class="fa-solid fa-eraser"></i><span>Очистить журнал</span></div>
             </div>
             <div class="mi-log" id="megainfo_log"></div>
 
