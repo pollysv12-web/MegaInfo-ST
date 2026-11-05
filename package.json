@@ -1,1 +1,13 @@
-{"type":"module","private":true,"scripts":{"test":"node --test test/*.test.mjs"}}
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "node test/browser/run.cjs"
+  },
+  "devDependencies": {
+    "dompurify": "3.2.6",
+    "jquery": "3.7.1",
+    "playwright": "*"
+  }
+}

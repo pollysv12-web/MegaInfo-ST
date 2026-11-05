@@ -10,117 +10,447 @@
                 <input type="checkbox" data-mi-setting="enabled">
                 <span>Включить расширение</span>
             </label>
+            <div class="mi-buttons">
+                <div class="menu_button menu_button_icon" id="megainfo_quick_open" title="Быстро включить/выключить блоки, настройки только этого чата">
+                    <i class="fa-solid fa-sliders"></i><span>Быстрое меню и настройки чата</span>
+                </div>
+            </div>
 
-            <h4 class="mi-set-h">Внешний вид</h4>
-            <div class="mi-set-row">
-                <label>Стиль блоков</label>
-                <select class="text_pole" data-mi-setting="style">
-                    <option value="glass">Стекло</option>
-                    <option value="minimal">Минимал</option>
-                    <option value="solid">Плотный</option>
-                </select>
+            <!-- ============================================================ ВИД -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-palette"></i> Внешний вид</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Тема</label>
+                            <select class="text_pole" data-mi-setting="theme">
+                                <option value="tavern">Как в таверне (цвета вашей темы)</option>
+                                <option value="glass">Стекло</option>
+                                <option value="noir">Тёмный неон</option>
+                                <option value="parchment">Пергамент</option>
+                                <option value="pastel">Пастель</option>
+                                <option value="minimal">Минимал</option>
+                                <option value="custom">Свои цвета</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Шрифт</label>
+                            <select class="text_pole" data-mi-setting="font">
+                                <option value="inherit">Как в таверне</option>
+                                <option value="sans">Без засечек</option>
+                                <option value="serif">С засечками</option>
+                                <option value="rounded">Округлый</option>
+                                <option value="mono">Моноширинный</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mi-set-grid" id="megainfo_custom_colors">
+                        <div class="mi-set-row"><label>Акцент</label><input type="color" data-mi-setting="custom.accent"></div>
+                        <div class="mi-set-row"><label>Фон</label><input type="color" data-mi-setting="custom.bg"></div>
+                        <div class="mi-set-row"><label>Текст</label><input type="color" data-mi-setting="custom.text"></div>
+                    </div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Раскладка</label>
+                            <select class="text_pole" data-mi-setting="layout">
+                                <option value="tabs">Вкладками (компактно)</option>
+                                <option value="stack">Блоками друг под другом</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Где показывать</label>
+                            <select class="text_pole" data-mi-setting="placement">
+                                <option value="top">Перед текстом ответа</option>
+                                <option value="bottom">После текста ответа</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label title="Старые блоки скрываются, чтобы не загромождать чат. Данные не теряются. 0 = показывать везде.">На последних N ответах</label>
+                            <input type="number" class="text_pole" min="0" max="999" data-mi-setting="showOnLast">
+                        </div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="collapsed"><span>Свёрнуты по умолчанию (видна только шапка)</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="hideWhileStreaming"><span>Прятать сырой блок, пока модель печатает</span></label>
+                    <div class="mi-set-row">
+                        <label>Свой CSS (для продвинутых, применяется поверх темы)</label>
+                        <textarea class="text_pole" rows="3" data-mi-setting="customCss" placeholder=".mi-host { --mi-accent: #ff77aa; }"></textarea>
+                    </div>
+                </div>
             </div>
-            <div class="mi-set-row">
-                <label>Где показывать</label>
-                <select class="text_pole" data-mi-setting="placement">
-                    <option value="top">Перед текстом ответа</option>
-                    <option value="bottom">После текста ответа</option>
-                </select>
-            </div>
-            <div class="mi-set-row">
-                <label title="Старые блоки скрываются, чтобы не загромождать чат. Данные не теряются. 0 = показывать везде.">Показывать на последних N сообщениях</label>
-                <input type="number" class="text_pole" min="0" max="999" data-mi-setting="showOnLast">
-            </div>
-            <label class="checkbox_label">
-                <input type="checkbox" data-mi-setting="hideWhileStreaming">
-                <span>Прятать сырой блок, пока модель печатает</span>
-            </label>
 
+            <!-- ============================================================ ЗАПРОСЫ -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-gears"></i> Как получать блоки</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <div class="mi-set-row">
+                        <label>Режим</label>
+                        <select class="text_pole" data-mi-setting="mode">
+                            <option value="auto">Авто: в ответе, а если модель забыла — отдельным запросом</option>
+                            <option value="inline">Только в ответе (дешевле всего)</option>
+                            <option value="separate">Только отдельным запросом (надёжнее, ответ бота чище)</option>
+                        </select>
+                    </div>
+                    <div class="mi-set-row">
+                        <label>Отдельный запрос</label>
+                        <select class="text_pole" data-mi-setting="separateKind">
+                            <option value="light">Лёгкий: последние сообщения + инструкция (дёшево)</option>
+                            <option value="full">Полный: весь чат, карточка и пресет (дорого, но с вашим джейлбрейком)</option>
+                        </select>
+                    </div>
+                    <div class="mi-set-row">
+                        <label title="Можно выбрать более дешёвую модель для отдельных запросов. Профили создаются в «Менеджере подключений» (значок вилки сверху). Для полного запроса всегда используется текущее подключение.">Подключение для лёгкого запроса</label>
+                        <select class="text_pole" data-mi-setting="profileId" id="megainfo_profile_select"></select>
+                    </div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label title="Сколько последних сообщений чата видит лёгкий отдельный запрос">Сообщений контекста</label>
+                            <input type="number" class="text_pole" min="1" max="40" data-mi-setting="contextMessages">
+                        </div>
+                        <div class="mi-set-row">
+                            <label title="Лимит ответа для отдельного запроса. Для моделей с размышлениями ставьте больше.">Лимит ответа (токены)</label>
+                            <input type="number" class="text_pole" min="400" max="16000" step="100" data-mi-setting="maxTokens">
+                        </div>
+                        <div class="mi-set-row">
+                            <label title="0 = инструкция в самом конце промпта (рекомендуется).">Глубина инструкции</label>
+                            <input type="number" class="text_pole" min="0" max="20" data-mi-setting="depth">
+                        </div>
+                    </div>
+                    <label class="checkbox_label" title="Модель видит текущие числа, место, следы и слухи, даже когда блок в этот раз не нужен. Так она не путается.">
+                        <input type="checkbox" data-mi-setting="remindState"><span>Напоминать модели текущее состояние в каждом запросе</span>
+                    </label>
+                    <div class="mi-set-sub"><i class="fa-solid fa-broom"></i> Чистка контекста</div>
+                    <div class="mi-hint">Блоки MegaInfo никогда не попадают в историю, которую видит модель. Здесь можно вычищать и чужие теги — от старых скриптов и пресетов — без регулярок.</div>
+                    <div class="mi-set-row">
+                        <label>Вырезать из истории теги (через запятую)</label>
+                        <input type="text" class="text_pole" data-mi-setting="cleanTags" placeholder="sims, diary, compass">
+                    </div>
+                    <div class="mi-set-row">
+                        <label title="Например 2 — HTML останется только в двух последних сообщениях. 0 — выключено.">Вырезать любой HTML из сообщений старше N (0 = выкл)</label>
+                        <input type="number" class="text_pole" min="0" max="100" data-mi-setting="stripHtmlDepth">
+                    </div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Язык текста в блоках</label>
+                            <select class="text_pole" data-mi-setting="language">
+                                <option value="Russian">Русский</option>
+                                <option value="English">English</option>
+                                <option value="Ukrainian">Українська</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label title="Как бот называет вас в дневнике и инструкциях. «Авто» угадывает по описанию персоны.">{{user}} — это</label>
+                            <select class="text_pole" data-mi-setting="userPronoun">
+                                <option value="auto">Авто (по персоне)</option>
+                                <option value="he">Он</option>
+                                <option value="she">Она</option>
+                                <option value="they">Они</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ МОДУЛИ -->
+            <h4 class="mi-set-h"><i class="fa-solid fa-cubes"></i> Блоки</h4>
+            <div class="mi-hint">«Каждые N ответов» — как часто модель обновляет блок. Между обновлениями значения сохраняются, токены не тратятся.</div>
+
+            <!-- SIMS -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-heart-pulse"></i> Sims — дата, время, потребности, деньги</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.enabled"><span>Включить</span></label>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Вариант</label>
+                            <select class="text_pole" data-mi-setting="modules.sims.variant">
+                                <option value="full">Полный: статы, деньги, одежда, мысли, д/р, MBTI</option>
+                                <option value="lite">Облегчённый: только дата, время, погода, место</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.sims.every"></div>
+                    </div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Вид статов</label>
+                            <select class="text_pole" data-mi-setting="modules.sims.view">
+                                <option value="bars">Полоски</option>
+                                <option value="chips">Компактно</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label>Сколько NPC отслеживать</label><input type="number" class="text_pole" min="0" max="6" data-mi-setting="modules.sims.npcMax"></div>
+                        <div class="mi-set-row">
+                            <label>Подробность NPC</label>
+                            <select class="text_pole" data-mi-setting="modules.sims.npcDetail">
+                                <option value="short">Коротко: настроение и одежда</option>
+                                <option value="full">Полностью: статы и мысли</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.npcTab"><span>NPC отдельной вкладкой</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.showMoney"><span>Деньги (баланс считает код по каждой трате)</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.showProfile"><span>Общая информация: д/р, знак зодиака, MBTI</span></label>
+                    <div class="mi-set-row"><label>Валюта</label><input type="text" class="text_pole" maxlength="6" data-mi-setting="modules.sims.currency"></div>
+                    <div class="mi-set-sub">Статы и их изменение за 2 часа времени в ролевой</div>
+                    <div class="mi-stat-table">
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.food.on"><span>Сытость</span></label>
+                        <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.food.decay">
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.hygiene.on"><span>Гигиена</span></label>
+                        <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.hygiene.decay">
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.energy.on"><span>Бодрость</span></label>
+                        <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.energy.decay">
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.arousal.on"><span>Возбуждение</span></label>
+                        <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.arousal.decay">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RELATIONS -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-people-arrows"></i> Отношения — шкала симпатии, тайные мысли</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.relations.enabled"><span>Включить</span></label>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row"><label title="Насколько симпатия может измениться за один ответ (шкала от −100 до 100). Меньше — плавнее.">Макс. шаг за ответ</label><input type="number" class="text_pole" min="1" max="30" data-mi-setting="modules.relations.maxStep"></div>
+                        <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.relations.every"></div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.relations.npc"><span>Отслеживать и NPC</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.relations.thoughts"><span>Тайные мысли и мотивы</span></label>
+                </div>
+            </div>
+
+            <!-- SLOWBURN -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-hourglass-half"></i> Слоуберн — 10 стадий романа</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.slowburn.enabled"><span>Включить</span></label>
+                    <div class="mi-hint">Незнакомцы → Первое впечатление → Интерес → Искра → Отрицание → Притяжение → Уязвимость → На грани → Признание → Вместе. Бот видит текущую стадию и что на ней «ещё рано».</div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Скорость</label>
+                            <select class="text_pole" data-mi-setting="modules.slowburn.speed">
+                                <option value="glacial">Очень медленно (+1 за ответ максимум)</option>
+                                <option value="slow">Медленно (+2)</option>
+                                <option value="medium">Средне (+3)</option>
+                                <option value="fast">Быстро (+5)</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label title="Пусто = персонаж чата ({{char}})">С кем (имя)</label><input type="text" class="text_pole" data-mi-setting="modules.slowburn.target" placeholder="{{char}}"></div>
+                        <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.slowburn.every"></div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.slowburn.dayLock"><span>Не больше одной новой стадии за игровой день</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.slowburn.strict"><span>Строго: бот не перескакивает стадии, даже если вы торопите</span></label>
+                </div>
+            </div>
+
+            <!-- WORLD -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-earth-europe"></i> Мир — напряжение, сюжет, расписание, слухи</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.enabled"><span>Включить</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.tension"><span>Напряжение 0–100%</span></label>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row"><label>+% за активную сцену</label><input type="number" class="text_pole" min="0" max="20" data-mi-setting="modules.world.tensionActive"></div>
+                        <div class="mi-set-row"><label>+% за спокойную сцену</label><input type="number" class="text_pole" min="0" max="20" data-mi-setting="modules.world.tensionSlow"></div>
+                        <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.world.every"></div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.twists"><span>На 100% — крупный сюжетный поворот, потом сброс</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.plot"><span>Сюжет и его прогресс</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.schedule"><span>Расписание персонажей (они его соблюдают)</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.rumors"><span>Слухи (NPC упоминают их в разговорах)</span></label>
+                    <div class="mi-set-row"><label>Сколько слухов держать</label><input type="number" class="text_pole" min="1" max="8" data-mi-setting="modules.world.rumorCount"></div>
+                </div>
+            </div>
+
+            <!-- LOCATION -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-map-location-dot"></i> Локация — описание места</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.location.enabled"><span>Включить</span></label>
+                    <div class="mi-hint">Подробное описание пишется только при попадании в новое место и хранится в чате. В знакомом месте модель его не переписывает.</div>
+                    <div class="mi-set-row">
+                        <label>Подробность</label>
+                        <select class="text_pole" data-mi-setting="modules.location.detail">
+                            <option value="short">Коротко</option>
+                            <option value="medium">Средне</option>
+                            <option value="long">Подробно</option>
+                        </select>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.location.remind"><span>Напоминать модели, как выглядит текущее место</span></label>
+                    <div class="mi-buttons"><div class="menu_button menu_button_icon" id="megainfo_places"><i class="fa-solid fa-list"></i><span>Места этого чата</span></div></div>
+                </div>
+            </div>
+
+            <!-- MARKS -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-band-aid"></i> Следы на теле — синяки, засосы, травмы, метки</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.enabled"><span>Включить</span></label>
+                    <div class="mi-hint">Следы заживают по времени ролевой: засос ~6 дней, синяк ~10, перелом ~7 недель; шрамы и тату остаются. Видны другим, только если не скрыты одеждой.</div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Скорость заживления</label>
+                            <select class="text_pole" data-mi-setting="modules.marks.healing">
+                                <option value="fast">Быстрее (×0.5)</option>
+                                <option value="realistic">Реалистично</option>
+                                <option value="slow">Медленнее (×1.5)</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Как реагируют окружающие</label>
+                            <select class="text_pole" data-mi-setting="modules.marks.notice">
+                                <option value="subtle">Сдержанно: мелочи почти не замечают</option>
+                                <option value="normal">Реалистично</option>
+                                <option value="dramatic">Драматично: заметные следы обсуждают</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.marks.every"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DIARY -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-book-open"></i> Дневник персонажа</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.enabled"><span>Включить</span></label>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Как писать</label>
+                            <select class="text_pole" data-mi-setting="modules.diary.mode">
+                                <option value="separate">Отдельным запросом (полная длина, не обрезается)</option>
+                                <option value="inline">В ответе бота (дешевле)</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Когда</label>
+                            <select class="text_pole" data-mi-setting="modules.diary.frequency">
+                                <option value="every">После каждого ответа</option>
+                                <option value="n">Каждые N ответов</option>
+                                <option value="day">Раз в игровой день</option>
+                                <option value="manual">Только по кнопке</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label>N</label><input type="number" class="text_pole" min="1" max="50" data-mi-setting="modules.diary.every"></div>
+                    </div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Длина записи</label>
+                            <select class="text_pole" data-mi-setting="modules.diary.length">
+                                <option value="short">Короткая (60–100 слов)</option>
+                                <option value="medium">Средняя (150–220)</option>
+                                <option value="long">Длинная (280–380)</option>
+                                <option value="huge">Очень длинная (450–650)</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Глубина</label>
+                            <select class="text_pole" data-mi-setting="modules.diary.detail">
+                                <option value="light">Лёгкая</option>
+                                <option value="normal">Обычная</option>
+                                <option value="deep">Глубокая, с деталями</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.aboutUser"><span>Раздел «О нём / о ней» (про {{user}}, местоимения — из настройки «{{user}} — это»)</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.npcs"><span>Дневники NPC</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.gossip"><span>Слухи и сплетни вокруг</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.secrets"><span>Секреты и скрытые желания</span></label>
+                    <div class="mi-buttons"><div class="menu_button menu_button_icon" id="megainfo_export_diary"><i class="fa-solid fa-file-lines"></i><span>Скачать дневник этого чата</span></div></div>
+                </div>
+            </div>
+
+            <!-- PHONE -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-mobile-screen"></i> Телефон — переписки, посты, уведомления</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.phone.enabled"><span>Включить</span></label>
+                    <div class="mi-hint">Появляется только когда в сцене реально пользуются телефоном. Стиль всегда один — тот, что выбран здесь.</div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Есть ли телефоны в мире</label>
+                            <select class="text_pole" data-mi-setting="modules.phone.exists">
+                                <option value="auto">Пусть решает модель по сеттингу</option>
+                                <option value="yes">Да (современность)</option>
+                                <option value="no">Нет (фэнтези, история)</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
+                            <label>Стиль</label>
+                            <select class="text_pole" data-mi-setting="modules.phone.style">
+                                <option value="ios">iPhone</option>
+                                <option value="telegram">Telegram</option>
+                                <option value="glass">Жидкое стекло</option>
+                                <option value="tavern">Как тема таверны</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mi-hint">Для отдельного чата это можно поменять в быстром меню.</div>
+                </div>
+            </div>
+
+            <!-- CARDS -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> HTML-карточки — посты, письма, документы</span>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.cards.enabled"><span>Включить</span></label>
+                    <div class="mi-hint">Модель рисует реалистичный «предмет» из сцены: пост, письмо, вывеску, чек, газету… Стиль подстраивается под сеттинг. Карточка изолирована и не ломает тему таверны.</div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row">
+                            <label>Когда</label>
+                            <select class="text_pole" data-mi-setting="modules.cards.when">
+                                <option value="context">Только когда в сцене есть такой предмет</option>
+                                <option value="every">В каждом ответе</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row"><label>Макс. размер (символов)</label><input type="number" class="text_pole" min="1000" max="30000" step="500" data-mi-setting="modules.cards.maxChars"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ ЛОГИ -->
             <hr>
-            <h4 class="mi-set-h"><i class="fa-solid fa-heart-pulse"></i> Sims</h4>
-            <label class="checkbox_label">
-                <input type="checkbox" data-mi-setting="sims.enabled">
-                <span>Включить блок sims</span>
-            </label>
+            <h4 class="mi-set-h"><i class="fa-solid fa-box-archive"></i> Логи и диагностика</h4>
+            <div class="mi-buttons">
+                <div class="menu_button menu_button_icon" id="megainfo_export_logs" title="Все инфоблоки этого чата в одном файле JSON"><i class="fa-solid fa-download"></i><span>Скачать логи инфоблоков</span></div>
+                <div class="menu_button menu_button_icon" id="megainfo_export_md" title="То же, но читаемым текстом"><i class="fa-solid fa-file-lines"></i><span>Логи текстом</span></div>
+                <div class="menu_button menu_button_icon" id="megainfo_copy_report" title="Скопировать отчёт для разработчика"><i class="fa-solid fa-stethoscope"></i><span>Скопировать диагностику</span></div>
+                <div class="menu_button menu_button_icon" id="megainfo_show_prompt" title="Показать, что сейчас уйдёт модели"><i class="fa-solid fa-eye"></i><span>Что видит модель</span></div>
+            </div>
+            <div class="mi-log" id="megainfo_log"></div>
 
-            <div class="mi-set-row">
-                <label>Как получать блок</label>
-                <select class="text_pole" data-mi-setting="sims.mode">
-                    <option value="auto">Авто: в ответе, а если не пришёл — отдельным запросом</option>
-                    <option value="inline">Только в ответе (дешевле всего)</option>
-                    <option value="separate">Только отдельным запросом (надёжнее, дороже)</option>
-                </select>
-            </div>
-            <div class="mi-set-row">
-                <label title="Можно выбрать более дешёвую модель для отдельных запросов. Профили создаются в меню «Менеджер подключений» (значок вилки сверху).">Подключение для отдельного запроса</label>
-                <select class="text_pole" data-mi-setting="sims.profileId" id="megainfo_profile_select"></select>
-            </div>
-            <div class="mi-set-grid">
-                <div class="mi-set-row">
-                    <label title="Сколько последних сообщений чата видит отдельный запрос">Сообщений контекста</label>
-                    <input type="number" class="text_pole" min="1" max="30" data-mi-setting="sims.contextMessages">
-                </div>
-                <div class="mi-set-row">
-                    <label title="Максимальная длина ответа для отдельного запроса">Лимит ответа (токены)</label>
-                    <input type="number" class="text_pole" min="200" max="4000" step="50" data-mi-setting="sims.maxTokens">
-                </div>
-                <div class="mi-set-row">
-                    <label title="0 = инструкция в самом конце промпта (рекомендуется). Чем больше, тем глубже в истории.">Глубина инструкции</label>
-                    <input type="number" class="text_pole" min="0" max="20" data-mi-setting="sims.depth">
-                </div>
-            </div>
-
-            <div class="mi-set-grid">
-                <div class="mi-set-row">
-                    <label>Вид</label>
-                    <select class="text_pole" data-mi-setting="sims.view">
-                        <option value="bars">Слайдеры</option>
-                        <option value="chips">Компактно (текстом)</option>
-                    </select>
-                </div>
-                <div class="mi-set-row">
-                    <label>Сколько NPC показывать</label>
-                    <input type="number" class="text_pole" min="0" max="6" data-mi-setting="sims.npcMax">
-                </div>
-                <div class="mi-set-row">
-                    <label>Подробность NPC</label>
-                    <select class="text_pole" data-mi-setting="sims.npcDetail">
-                        <option value="short">Коротко: настроение и одежда</option>
-                        <option value="full">Полностью: статы и мысли</option>
-                    </select>
-                </div>
-            </div>
-
-            <label class="checkbox_label">
-                <input type="checkbox" data-mi-setting="sims.collapsed">
-                <span>Блок свёрнут по умолчанию</span>
-            </label>
-            <label class="checkbox_label">
-                <input type="checkbox" data-mi-setting="sims.showMoney">
-                <span>Деньги</span>
-            </label>
-            <label class="checkbox_label">
-                <input type="checkbox" data-mi-setting="sims.showProfile">
-                <span>Общая информация (д/р, знак, MBTI)</span>
-            </label>
-            <div class="mi-set-row">
-                <label>Валюта</label>
-                <input type="text" class="text_pole" maxlength="5" data-mi-setting="sims.currency">
-            </div>
-
-            <div class="mi-set-sub">Статы и их изменение за 2 часа времени в ролевой</div>
-            <div class="mi-stat-table">
-                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.food.on"><span>Сытость</span></label>
-                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.food.decay">
-                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.hygiene.on"><span>Гигиена</span></label>
-                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.hygiene.decay">
-                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.energy.on"><span>Бодрость</span></label>
-                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.energy.decay">
-                <label class="checkbox_label"><input type="checkbox" data-mi-setting="sims.stats.arousal.on"><span>Возбуждение</span></label>
-                <input type="number" class="text_pole" step="1" data-mi-setting="sims.stats.arousal.decay">
-            </div>
-
-            <hr>
             <h4 class="mi-set-h"><i class="fa-solid fa-coins"></i> Расход токенов</h4>
             <div id="megainfo_tokens" class="mi-tokens">Откройте чат, чтобы посчитать.</div>
             <div class="menu_button menu_button_icon" id="megainfo_tokens_refresh">
