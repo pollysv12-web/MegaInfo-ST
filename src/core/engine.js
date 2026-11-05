@@ -123,6 +123,14 @@ export function extractBlocks(text) {
     const j = findTagBlock(raw, TAG);
     const c = findTagBlock(raw, CARD_TAG);
     const found = !!(j || c);
+    if (!j) {
+        // Тега нет — возможно, регулярка срезала теги или модель написала голый ```json в конце ответа.
+        const bare = findBareJson(raw);
+        if (bare) {
+            const rest = c ? stripTagBlocks(raw.slice(0, bare.start), OUR_TAGS) : raw.slice(0, bare.start).trim();
+            return { json: bare.json, jsonClosed: true, card: c ? c.inner : null, text: rest.replace(/\n{3,}/g, '\n\n').trim(), found: true, bare: true };
+        }
+    }
     return {
         json: j ? j.inner : null,
         jsonClosed: j ? j.closed : false,
@@ -130,6 +138,29 @@ export function extractBlocks(text) {
         text: found ? stripTagBlocks(raw, OUR_TAGS) : raw,
         found,
     };
+}
+
+/**
+ * Ищет JSON-объект с полями MegaInfo в самом конце текста (без тега).
+ * @returns {{ json: string, start: number } | null}
+ */
+export function findBareJson(text) {
+    const tail = text.replace(/\s*```\s*$/, '');
+    if (!tail.trimEnd().endsWith('}')) return null;
+    const from = Math.max(0, tail.length - 20000);
+    for (let i = tail.indexOf('{', from); i !== -1; i = tail.indexOf('{', i + 1)) {
+        const candidate = tail.slice(i).trim();
+        let data;
+        try { data = JSON.parse(candidate); } catch { try { data = parseLooseJson(candidate); } catch { continue; } }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) continue;
+        const hits = DATA_KEYS.filter((k) => data[k] !== undefined).length;
+        if (hits < 2) continue;
+        let start = i;
+        const fence = text.lastIndexOf('```', i);
+        if (fence !== -1 && /^```(?:json)?\s*$/.test(text.slice(fence, i))) start = fence;
+        return { json: candidate, start };
+    }
+    return null;
 }
 
 export function parseJsonBlock(inner) {

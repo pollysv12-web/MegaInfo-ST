@@ -11,7 +11,7 @@ import {
     botMessagesBetween, clearData, findPreviousState, findPreviousWith, getData, getMessage, getPlaces,
     isBotMessage, markPlaceTry, placeTries, saveChat, savePlace, setData, setMessageText,
 } from './store.js';
-import { fullRequest, lightRequest, recentStory } from './request.js';
+import { cardContext, chatHistory, errorText, recentStory, sideRequest } from './request.js';
 import * as Log from './log.js';
 import { stripAnyHtml, stripTagBlocks } from './util.js';
 
@@ -242,7 +242,15 @@ export async function handleReceived(messageId, type) {
         }
     } else if (request.size && !(type === 'continue' && getData(message)?.state)) {
         const tail = String(message.mes ?? '').slice(-220).replace(/\s+/g, ' ');
-        Log.warn(`#${id}: в ответе нет блока <megainfo> (тип: ${type ?? 'normal'})`, { asked: [...request], tail });
+        const hint = /[{}]/.test(tail) ? ' (в конце есть фигурные скобки — возможно, блок испорчен регуляркой)' : '';
+        Log.warn(`#${id}: в ответе нет блока <megainfo> (тип: ${type ?? 'normal'})${hint}`, { asked: [...request], tail });
+    }
+    if (blocks.bare) Log.info(`#${id}: блок без тега <megainfo> — найден JSON в конце ответа`);
+    if (request.size) {
+        setData(message, 'dbg', {
+            asked: [...request], found: !!blocks.json, bare: !!blocks.bare, truncated, ok: jsonOk,
+            tail: blocks.json ? '' : String(message.mes ?? '').slice(-300),
+        });
     }
     if (blocks.card) {
         const card = Extras.parseCard(blocks.card, s.modules.cards.maxChars);
@@ -326,15 +334,23 @@ export function runSeparate(messageId, modules, o = {}) {
             state: base, request, opts, separate: true, prevDiary: request.has('diary') ? previousDiary(id) : null,
         });
         const maxTokens = Math.max(400, Number(s.maxTokens) || 2500);
-        Log.info(`#${id}: отдельный запрос (${s.separateKind})`, { modules: [...request] });
+        Log.info(`#${id}: отдельный запрос (${o.kind ?? s.separateKind}${o.retry ? ', повтор' : ''})`, { modules: [...request] });
 
+        const ask = 'Now output ONLY the <megainfo> block for the moment right after the last message of the story.';
+        const kind = o.kind ?? s.separateKind;
         let answer = '';
-        if (s.separateKind === 'full') {
-            answer = await fullRequest({ instruction: `${instruction}\n\nNow output ONLY the <megainfo> block for the moment right after the last message.`, maxTokens });
+        if (kind === 'full') {
+            const card = cardContext();
+            answer = await sideRequest({
+                system: card ? `${instruction}\n\n---\nCONTEXT:\n${card}` : instruction,
+                history: chatHistory(id, 60, cleanTagList(s)),
+                final: `[Конец истории]\n${ask}`,
+                profileId: s.profileId,
+                maxTokens,
+            });
         } else {
             const story = recentStory(id, Math.max(1, Number(s.contextMessages) || 6), cleanTagList(s));
-            const user = `STORY (latest part):\n\n${story}\n\n---\nNow output ONLY the <megainfo> block for the moment right after the last message.`;
-            answer = await lightRequest({ system: instruction, user, profileId: s.profileId, maxTokens });
+            answer = await sideRequest({ system: instruction, final: `STORY (latest part):\n\n${story}\n\n---\n${ask}`, profileId: s.profileId, maxTokens });
         }
         if (!stillValid()) {
             Log.info(`#${id}: ответ отдельного запроса устарел (свайп/смена чата) — пропускаю`);
@@ -367,12 +383,21 @@ export function runSeparate(messageId, modules, o = {}) {
         await saveChat();
         return 'ok';
     })().catch(async (e) => {
-        Log.error(`#${id}: отдельный запрос не удался — ${e?.message ?? e}`, e?.answer ? String(e.answer).slice(0, 500) : undefined);
+        const msg = errorText(e);
+        Log.error(`#${id}: отдельный запрос не удался — ${msg}`, e?.answer ? String(e.answer).slice(0, 500) : undefined);
+        // Один повтор: после ошибки API — лёгким запросом (меньше и проще), после пустого ответа — тем же.
+        if ((o.retry ?? 0) < 1 && stillValid()) {
+            const kind = e?.soft ? (o.kind ?? getSettings().separateKind) : 'light';
+            Log.info(`#${id}: пробую ещё раз (${kind})`);
+            pending.delete(id);
+            pendingScene.delete(id);
+            return runSeparate(id, modules, { ...o, retry: 1, kind });
+        }
         if (stillValid() && SCENE.some((k) => [...modules].includes(k))) {
-            setData(message, 'err', { text: String(e?.message ?? e), raw: e?.answer ? String(e.answer).slice(0, 2000) : '' });
+            setData(message, 'err', { text: msg, raw: e?.answer ? String(e.answer).slice(0, 2000) : '' });
             await saveChat().catch(() => {});
         }
-        toastr.error(String(e?.cause?.message || e?.message || e), 'MegaInfo: не удалось получить блок');
+        toastr.error(msg, 'MegaInfo: не удалось получить блок');
         return 'error';
     });
 

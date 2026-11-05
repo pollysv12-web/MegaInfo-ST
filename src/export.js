@@ -111,6 +111,12 @@ export function exportText() {
             }
             if (st.marks?.length) out.push(`Следы: ${st.marks.map((k) => `${k.who}: ${Marks.KINDS[k.kind]?.label ?? k.kind} (${k.where})`).join('; ')}`);
         }
+        if (m.err) out.push(`⚠ Ошибка: ${m.err.text}${m.err.raw ? `\n  Ответ модели: ${String(m.err.raw).slice(0, 400)}` : ''}`);
+        if (m.dbg) {
+            const d = m.dbg;
+            out.push(`Отладка: просили [${(d.asked ?? []).join(', ')}] · блок ${d.found ? (d.bare ? 'найден без тега' : 'найден') : 'НЕ найден'}${d.truncated ? ' · оборван' : ''}${d.found && !d.ok ? ' · не разобран' : ''}`);
+            if (d.tail) out.push(`  Конец ответа: …${String(d.tail).replace(/\s+/g, ' ')}`);
+        }
         if (m.diary) out.push('', diaryText(m.diary, pron));
         if (m.phone) out.push('', 'Телефон:', ...m.phone.flatMap((p) => p.items.map((i) => `  [${p.app}] ${i.from || (i.dir === 'out' ? '→' : '←')}: ${i.text}`)));
         out.push('');

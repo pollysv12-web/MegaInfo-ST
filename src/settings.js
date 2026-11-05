@@ -1,7 +1,7 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.1';
 
 /** Статы sims. decay — изменение за 2 часа времени в ролевой. */
 export const STAT_DEFS = {
@@ -48,6 +48,7 @@ export const DEFAULTS = {
     contextMessages: 6,
     maxTokens: 2500,
     depth: 0,
+    injectRole: 'user',       // system | user — от чьего имени вставлять инструкцию
     remindState: true,        // напоминать модели текущее состояние в каждом запросе
     cleanTags: 'sims, diary, compass, phone, monolog, infoblock, status',
     stripHtmlDepth: 0,        // 0 = выкл; иначе вырезать любой HTML из сообщений глубже N

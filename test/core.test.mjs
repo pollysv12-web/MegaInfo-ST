@@ -273,6 +273,11 @@ test('блоки вырезаются из текста, в том числе н
     assert.equal(stripTagBlocks('a <sims>x</sims> b', ['sims']), 'a  b');
     assert.equal(stripAnyHtml('Привет <div style="x">блок<div>вложенный</div></div> <b>жирный</b>'), 'Привет  жирный');
     assert.equal(weekday('15.03.2025', '10:00'), 'Сб');
+    // регулярка срезала теги — остался голый JSON в конце
+    const bare = extractBlocks('Он ушёл {хлопнув дверью}.\n\n{"date":"01.01.2025","time":"10:00","people":[]}');
+    assert.equal(bare.bare, true);
+    assert.equal(bare.text, 'Он ушёл {хлопнув дверью}.');
+    assert.equal(extractBlocks('Она сказала {тихо}.').found, false);
 });
 
 test('длинная ролевая: 12 ходов, состояние не теряется', () => {
