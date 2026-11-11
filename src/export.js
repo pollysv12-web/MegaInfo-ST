@@ -71,10 +71,10 @@ export function exportDiary() {
         if (d) parts.push(diaryText(d, pron));
     });
     if (!parts.length) {
-        toastr.info('В этом чате пока нет записей дневника.', 'MegaInfo');
+        toastr.info('В этом чате пока нет личных заметок.', 'MegaInfo');
         return;
     }
-    download(`${baseName()}_diary.md`, `# Дневник: ${c.name2}\n\n${parts.join('\n\n---\n\n')}\n`, 'text/markdown');
+    download(`${baseName()}_diary.md`, `# Заметки: ${c.name2}\n\n${parts.join('\n\n---\n\n')}\n`, 'text/markdown');
 }
 
 export function exportText() {
@@ -103,10 +103,10 @@ export function exportText() {
                 out.push(`- ${p.name}: ${bits.join(' · ')}${p.thought ? `\n  «${p.thought}»` : ''}`);
             }
             if (st.tx?.length) out.push(`Траты: ${st.tx.map((t) => `${t.who} ${formatMoney(t.amount, s.modules.sims.currency)} ${t.note}`).join('; ')}`);
-            if (st.slow) out.push(`Слоуберн: ${st.slow.points}/100`);
+            if (st.slow) out.push(`Сближение: ${st.slow.points}/100`);
             if (st.world) {
                 const w = st.world;
-                out.push(`Мир: сюжет «${w.plot}» ${w.progress}% · напряжение ${w.tension}%${w.twist ? ` · ПОВОРОТ: ${w.twist}` : ''}`);
+                out.push(`Сюжет: «${w.plot}» ${w.progress}% · напряжение ${w.tension}%${w.twist ? ` · ПОВОРОТ: ${w.twist}` : ''}`);
                 if (w.rumors?.length) out.push(`Слухи: ${w.rumors.map((r) => r.text).join(' | ')}`);
             }
             if (st.marks?.length) out.push(`Следы: ${st.marks.map((k) => `${k.who}: ${Marks.KINDS[k.kind]?.label ?? k.kind} (${k.where})`).join('; ')}`);
@@ -118,7 +118,7 @@ export function exportText() {
             if (d.tail) out.push(`  Конец ответа: …${String(d.tail).replace(/\s+/g, ' ')}`);
         }
         if (m.diary) out.push('', diaryText(m.diary, pron));
-        if (m.phone) out.push('', 'Телефон:', ...m.phone.flatMap((p) => p.items.map((i) => `  [${p.app}] ${i.from || (i.dir === 'out' ? '→' : '←')}: ${i.text}`)));
+        if (m.phone) out.push('', 'На связи:', ...m.phone.flatMap((p) => p.items.map((i) => `  [${p.app}] ${i.from || (i.dir === 'out' ? '→' : '←')}: ${i.text}`)));
         out.push('');
     }
     const places = Object.values(data.places);

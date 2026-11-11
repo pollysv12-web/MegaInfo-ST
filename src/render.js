@@ -257,8 +257,8 @@ export function renderDiary(diary, opts) {
     if (!diary) return '';
     const cfg = opts.s.modules.diary;
     let h = '<div class="mi-diary">';
-    h += `<div class="mi-diary-head">${icon('fa-book-open')}<span>${esc(diary.title || 'Дневник')}</span><span class="mi-muted">${esc(diary.date)}</span></div>`;
-    h += `<div class="mi-diary-sec mi-diary-main"><div class="mi-diary-title">${icon('fa-pen-nib')}Мои мысли</div>${para(diary.entry)}</div>`;
+    h += `<div class="mi-diary-head">${icon('fa-book-open')}<span>${esc(diary.title || 'Заметки')}</span><span class="mi-muted">${esc(diary.date)}</span></div>`;
+    h += `<div class="mi-diary-sec mi-diary-main"><div class="mi-diary-title">${icon('fa-pen-nib')}Личное</div>${para(diary.entry)}</div>`;
     if (cfg.aboutUser && diary.aboutUser) {
         h += `<div class="mi-diary-sec mi-diary-user"><div class="mi-diary-title">${icon('fa-heart')}${esc(Extras.diaryAboutTitle(opts.pronoun))}</div>${para(diary.aboutUser)}</div>`;
     }
@@ -334,33 +334,33 @@ function buildTabs(data, opts) {
             const npcs = people.filter((p) => p.role === 'npc');
             if (main.length) {
                 tabs.push({
-                    key: 'chars', label: 'Персонажи', icon: 'fa-heart-pulse',
+                    key: 'chars', label: 'Пульс', icon: 'fa-heart-pulse',
                     html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${main.map((p) => personCard(p, opts, warnings)).join('')}</div>${profileSection(state, people.filter((p) => p.role !== 'npc'), opts)}`,
                 });
             }
             if (cfg.sims.npcTab && npcs.length) {
                 tabs.push({
-                    key: 'npc', label: 'NPC', icon: 'fa-user-group',
+                    key: 'npc', label: 'Окружение', icon: 'fa-user-group',
                     html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${npcs.map((p) => personCard(p, opts, warnings, { showRel: opts.on.relations })).join('')}</div>`,
                 });
             }
         }
         if (opts.on.relations) {
             const html = relationsPane(state, opts);
-            if (html) tabs.push({ key: 'rel', label: 'Отношения', icon: 'fa-people-arrows', html });
+            if (html) tabs.push({ key: 'rel', label: 'Связи', icon: 'fa-people-arrows', html });
         }
-        if (opts.on.slowburn && state.slow) tabs.push({ key: 'slow', label: 'Слоуберн', icon: 'fa-hourglass-half', html: slowPane(state, opts) });
+        if (opts.on.slowburn && state.slow) tabs.push({ key: 'slow', label: 'Сближение', icon: 'fa-hourglass-half', html: slowPane(state, opts) });
         if (opts.on.world) {
             const html = worldPane(state, opts);
-            if (html) tabs.push({ key: 'world', label: 'Мир', icon: 'fa-earth-europe', html });
+            if (html) tabs.push({ key: 'world', label: 'Сюжет', icon: 'fa-earth-europe', html });
         }
         if (opts.on.location && state.location) {
             const html = placePane(state, opts, data);
-            if (html) tabs.push({ key: 'place', label: 'Место', icon: 'fa-map-location-dot', html });
+            if (html) tabs.push({ key: 'place', label: 'Места', icon: 'fa-map-location-dot', html });
         }
         if (opts.on.marks) {
             const html = bodyPane(state, opts);
-            if (html) tabs.push({ key: 'body', label: 'Тело', icon: 'fa-band-aid', html });
+            if (html) tabs.push({ key: 'body', label: 'Следы', icon: 'fa-band-aid', html });
         }
     }
     return tabs;
@@ -400,7 +400,7 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
     let actions = '';
     actions += `<i class="fa-solid fa-rotate mi-act" data-mi-act="regen" title="Пересчитать инфоблок этого сообщения отдельным запросом"></i>`;
     if (state) actions += `<i class="fa-solid fa-pen mi-act" data-mi-act="edit" title="Исправить значения вручную"></i>`;
-    if (opts.on.diary && !data?.diary) actions += `<i class="fa-solid fa-book-open mi-act" data-mi-act="diary" title="Написать запись в дневник"></i>`;
+    if (opts.on.diary && !data?.diary) actions += `<i class="fa-solid fa-book-open mi-act" data-mi-act="diary" title="Добавить личную заметку"></i>`;
     if (tabs.length) actions += `<i class="fa-solid ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} mi-act" data-mi-act="toggle" title="Свернуть / развернуть"></i>`;
 
     if (!state && !tabs.length && !err && !pending) {
@@ -409,7 +409,7 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
         if (!anyOn) return '';
         return `<div class="mi-panel mi-missing">${icon('fa-circle-plus')}<span>У этого ответа нет инфоблока</span>`
             + '<span class="menu_button mi-act" data-mi-act="regen">Создать</span>'
-            + (opts.on.diary ? '<span class="menu_button mi-act" data-mi-act="diary">Дневник</span>' : '')
+            + (opts.on.diary ? '<span class="menu_button mi-act" data-mi-act="diary">Заметки</span>' : '')
             + '</div>';
     }
 

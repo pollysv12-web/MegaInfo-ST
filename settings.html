@@ -1,7 +1,7 @@
 <div class="megainfo-settings">
     <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
-            <b>MegaInfo · инфоблоки</b>
+            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">UI · проба</span></b>
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
@@ -29,9 +29,9 @@
                             <select class="text_pole" data-mi-setting="theme">
                                 <option value="tavern">Как в таверне (цвета вашей темы)</option>
                                 <option value="glass">Стекло</option>
-                                <option value="noir">Тёмный неон</option>
-                                <option value="parchment">Пергамент</option>
-                                <option value="pastel">Пастель</option>
+                                <option value="noir">Чернила</option>
+                                <option value="parchment">Бумага</option>
+                                <option value="pastel">Мята</option>
                                 <option value="minimal">Минимал</option>
                                 <option value="custom">Свои цвета</option>
                             </select>
@@ -73,7 +73,7 @@
                         </div>
                     </div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="collapsed"><span>Свёрнуты по умолчанию (видна только шапка)</span></label>
-                    <div class="mi-hint">Если свернуть или развернуть панель вручную, её состояние сохранится в этом чате. Дневник, телефон и карточки показываются отдельно от панели.</div>
+                    <div class="mi-hint">Если свернуть или развернуть панель вручную, её состояние сохранится в этом чате. «Заметки», «На связи» и «Детали» показываются отдельно от панели.</div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="hideWhileStreaming"><span>Прятать сырой блок, пока модель печатает</span></label>
                     <div class="mi-set-row">
                         <label>Свой CSS (для продвинутых, применяется поверх темы)</label>
@@ -152,7 +152,7 @@
                             </select>
                         </div>
                         <div class="mi-set-row">
-                            <label title="Как бот называет вас в дневнике и инструкциях. «Авто» угадывает по описанию персоны.">{{user}} — это</label>
+                            <label title="Как бот называет вас в заметках и инструкциях. «Авто» угадывает по описанию персоны.">{{user}} — это</label>
                             <select class="text_pole" data-mi-setting="userPronoun">
                                 <option value="auto">Авто (по персоне)</option>
                                 <option value="he">Он</option>
@@ -171,7 +171,7 @@
             <!-- SIMS -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-heart-pulse"></i> Sims — дата, время, потребности, деньги</span>
+                    <span><i class="fa-solid fa-heart-pulse"></i> Пульс — потребности, настроение, одежда</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -229,7 +229,7 @@
             <!-- RELATIONS -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-people-arrows"></i> Отношения — шкала симпатии, тайные мысли</span>
+                    <span><i class="fa-solid fa-people-arrows"></i> Связи — симпатия и тайные мысли</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -246,7 +246,7 @@
             <!-- SLOWBURN -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-hourglass-half"></i> Слоуберн — 10 стадий романа</span>
+                    <span><i class="fa-solid fa-hourglass-half"></i> Сближение — 10 стадий романа</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -281,7 +281,7 @@
             <!-- WORLD -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-earth-europe"></i> Мир — напряжение, сюжет, расписание, слухи</span>
+                    <span><i class="fa-solid fa-earth-europe"></i> Сюжет — напряжение, расписание, слухи</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -303,7 +303,7 @@
             <!-- LOCATION -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-map-location-dot"></i> Локация — описание места</span>
+                    <span><i class="fa-solid fa-map-location-dot"></i> Места — описания и атмосфера</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -325,13 +325,13 @@
             <!-- MARKS -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-band-aid"></i> Следы на теле — синяки, засосы, травмы, метки</span>
+                    <span><i class="fa-solid fa-band-aid"></i> Следы — травмы и изменения кожи</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.enabled"><span>Включить</span></label>
                     <div class="mi-hint">Раны, ожоги, обморожения, синяки и окрашивание кожи проходят по времени ролевой, с учётом вида и тяжести. Видны другим, только если не скрыты одеждой. Любой след можно убрать кнопкой рядом с ним в панели.</div>
-                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.trackPermanent"><span>Отслеживать новые татуировки, пирсинг и постоянные метки</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.trackPermanent"><span>Учитывать новые татуировки и пирсинг</span></label>
                     <div class="mi-hint">Только приобретённые по ходу игры: исходные татуировки, пирсинг и врождённые особенности не добавляются. У свежей татуировки или прокола сначала учитывается заживление.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
@@ -358,14 +358,14 @@
             <!-- DIARY -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-book-open"></i> Дневник персонажа</span>
+                    <span><i class="fa-solid fa-book-open"></i> Заметки — личное после сцены</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.enabled"><span>Включить</span></label>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
-                            <label>Где показывать дневник</label>
+                            <label>Где показывать заметки</label>
                             <select class="text_pole" data-mi-setting="modules.diary.placement">
                                 <option value="top">В начале ответа</option>
                                 <option value="bottom">В конце ответа</option>
@@ -389,7 +389,7 @@
                         </div>
                         <div class="mi-set-row"><label>N</label><input type="number" class="text_pole" min="1" max="50" data-mi-setting="modules.diary.every"></div>
                     </div>
-                    <div class="mi-hint">Чтобы дневник появился сразу, выберите «Вместе с ответом бота». При отдельном запросе на выбранном месте сначала появится ожидание, затем готовая запись.</div>
+                    <div class="mi-hint">Чтобы заметки появились сразу, выберите «Вместе с ответом бота». При отдельном запросе на выбранном месте сначала появится ожидание, затем готовая запись.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
                             <label>Длина записи</label>
@@ -410,17 +410,17 @@
                         </div>
                     </div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.aboutUser"><span>Раздел «О нём / о ней» (про {{user}}, местоимения — из настройки «{{user}} — это»)</span></label>
-                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.npcs"><span>Дневники NPC</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.npcs"><span>Заметки окружения</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.gossip"><span>Слухи и сплетни вокруг</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.secrets"><span>Секреты и скрытые желания</span></label>
-                    <div class="mi-buttons"><div class="menu_button menu_button_icon" id="megainfo_export_diary"><i class="fa-solid fa-file-lines"></i><span>Скачать дневник этого чата</span></div></div>
+                    <div class="mi-buttons"><div class="menu_button menu_button_icon" id="megainfo_export_diary"><i class="fa-solid fa-file-lines"></i><span>Скачать заметки этого чата</span></div></div>
                 </div>
             </div>
 
             <!-- PHONE -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-mobile-screen"></i> Телефон — переписки, посты, уведомления</span>
+                    <span><i class="fa-solid fa-mobile-screen"></i> На связи — переписки, посты, уведомления</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -452,7 +452,7 @@
             <!-- CARDS -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> HTML-карточки — посты, письма, документы</span>
+                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> Детали — письма, посты, документы</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
