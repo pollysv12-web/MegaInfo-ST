@@ -11,6 +11,7 @@ const types = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/cs
 
 const server = http.createServer((req, res) => {
     let url = decodeURIComponent(req.url.split('?')[0]);
+    if (url === '/favicon.ico') { res.writeHead(204); return res.end(); }
     if (url === '/') url = '/harness/index.html';
     const prefix = Object.keys(roots).find((p) => url.startsWith(p));
     if (!prefix) { res.writeHead(404); return res.end(); }
@@ -32,7 +33,10 @@ function check(name, ok, info = '') {
     await new Promise((r) => server.listen(0, r));
     const port = server.address().port;
     fs.mkdirSync(shotsDir, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+        executablePath: process.env.MEGAINFO_CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),
+        args: ['--no-sandbox'],
+    });
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
@@ -55,7 +59,7 @@ function check(name, ok, info = '') {
 
     // ---------------------------------------------------------- 1. длинный чат
     await page.evaluate(() => window.__newChat('chat-1', 'Алекс протирает стойку и поднимает глаза.'));
-    await page.evaluate(() => { const s = window.__st.extensionSettings.megainfo; for (const k of ['slowburn', 'world', 'phone', 'cards']) s.modules[k].enabled = true; s.modules.phone.exists = 'yes'; });
+    await page.evaluate(() => { const s = window.__st.extensionSettings.megainfo; for (const k of ['slowburn', 'world', 'phone', 'cards']) s.modules[k].enabled = true; s.modules.phone.exists = 'yes'; s.modules.diary.mode = 'separate'; });
 
     const plan = ['good', 'good', 'forget', 'good', 'broken', 'good', 'truncated', 'good', 'good', 'good', 'good', 'good'];
     let prevTime = '';
@@ -73,7 +77,7 @@ function check(name, ok, info = '') {
         check(`ход ${i + 1}: панель нарисована`, !!panel);
     }
     const prompts = await page.evaluate(() => window.__st.prompts);
-    check('в историю модели не попадает ни одного блока', prompts.every((p) => p.history.every((h) => !/<megainfo/.test(h))));
+    check('в историю модели не попадает ни одного блока или маркера вставки', prompts.every((p) => p.history.every((h) => !/<megainfo|\[\[mi:(?:phone|card)\]\]/.test(h))));
     check('каждый обычный запрос получил инструкцию с текущим состоянием', prompts.slice(1).every((p) => /CURRENT STATE \(calculated/.test(p.injection)), prompts.map((p) => p.injection.length).join(','));
     const lb1 = await lastBot();
     const st1 = lb1.data.state;
@@ -105,26 +109,62 @@ function check(name, ok, info = '') {
         const el = await page.$(`#chat .mes[mesid="${lastId}"] .mi-panel`);
         await el.screenshot({ path: path.join(shotsDir, `tab-${t}.png`) });
     }
-    // карточка и телефон на своих сообщениях
-    for (const [id, tab] of [[cardId, 'card'], [chat.findIndex((k) => k.includes('phone')), 'phone']]) {
-        await page.evaluate(() => { window.__st.extensionSettings.megainfo.showOnLast = 0; });
-        await page.evaluate(() => window.__st.chat.length && null);
-        await page.click('.megainfo-settings [data-mi-setting="collapsed"]');
-        await page.click('.megainfo-settings [data-mi-setting="collapsed"]');
-        const sel = `#chat .mes[mesid="${id}"] .mi-tab[data-mi-tab="${tab}"]`;
-        if (await page.$(sel)) {
-            await page.click(sel);
-            const el = await page.$(`#chat .mes[mesid="${id}"] .mi-panel`);
-            await el.screenshot({ path: path.join(shotsDir, `tab-${tab}-msg.png`) });
-            if (tab === 'card') {
-                const shadow = await page.evaluate((id) => {
-                    const host = document.querySelector(`#chat .mes[mesid="${id}"] .mi-card-host`);
-                    return host?.shadowRoot ? host.shadowRoot.innerHTML : null;
-                }, id);
-                check('карточка в Shadow DOM, без <script>', shadow && !/script/.test(shadow) && /Чек/.test(shadow));
-            }
-        } else check(`вкладка ${tab} есть`, false);
+    // Карточки и телефон встроены в текст; старые ответы не теряют предметы,
+    // когда ограничение «последние N» скрывает их основную панель.
+    await page.evaluate(() => { window.__st.extensionSettings.megainfo.showOnLast = 0; });
+    await page.selectOption('.megainfo-settings [data-mi-setting="theme"]', 'glass');
+    await page.selectOption('.megainfo-settings [data-mi-setting="theme"]', 'tavern');
+    const phoneId = chat.findIndex((k) => k.includes('phone'));
+    for (const [id, kind] of [[cardId, 'card'], [phoneId, 'phone']]) {
+        const inline = await page.$(`#chat .mes[mesid="${id}"] .mes_text [data-mi-inline="${kind}"]`);
+        check(`${kind}: блок находится внутри текста ответа`, !!inline);
+        check(`${kind}: блок убран из вкладок инфопанели`, !(await page.$(`#chat .mes[mesid="${id}"] .mi-panel [data-mi-tab="${kind}"]`)));
+        const order = await page.evaluate(([id, kind]) => {
+            const text = document.querySelector(`#chat .mes[mesid="${id}"] .mes_text`);
+            const html = text.innerHTML;
+            const before = kind === 'phone' ? 'Он достал телефон' : 'Алекс развернул бумажный чек';
+            const after = kind === 'phone' ? 'Убрав телефон' : 'Он отложил чек';
+            const slot = html.indexOf(`data-mi-inline="${kind}"`);
+            return html.indexOf(before) < slot && slot < html.indexOf(after) && !/\[\[mi:/.test(text.textContent);
+        }, [id, kind]);
+        check(`${kind}: вставка между связанными с ней абзацами, без сырого маркера`, order);
+        if (inline) await inline.screenshot({ path: path.join(shotsDir, `inline-${kind}.png`) });
+        if (kind === 'card') {
+            const shadow = await page.evaluate((id) => {
+                const host = document.querySelector(`#chat .mes[mesid="${id}"] .mes_text .mi-card-host`);
+                return host?.shadowRoot ? host.shadowRoot.innerHTML : null;
+            }, id);
+            check('карточка в Shadow DOM, без <script>', shadow && !/<script/i.test(shadow) && /Чек/.test(shadow));
+        }
     }
+    await page.evaluate(() => { window.__st.extensionSettings.megainfo.showOnLast = 1; });
+    await page.selectOption('.megainfo-settings [data-mi-setting="theme"]', 'glass');
+    check('историческая карточка остаётся в тексте вне последних N панелей', !!(await page.$(`#chat .mes[mesid="${cardId}"] .mes_text [data-mi-inline="card"]`)));
+    await page.evaluate(() => { window.__st.extensionSettings.megainfo.showOnLast = 0; });
+    await page.selectOption('.megainfo-settings [data-mi-setting="theme"]', 'tavern');
+
+    // Дневник рисуется отдельным блоком сразу после текста, а настройка
+    // перемещает ту же запись перед текстом без нового запроса модели.
+    const diaryOrder = async (placement) => {
+        await page.selectOption('.megainfo-settings [data-mi-setting="modules.diary.placement"]', placement);
+        return page.evaluate(([id, placement]) => {
+            const text = document.querySelector(`#chat .mes[mesid="${id}"] .mes_text`);
+            const sibling = placement === 'top' ? text.previousElementSibling : text.nextElementSibling;
+            return sibling?.matches('.mi-diary-host') && !document.querySelector(`#chat .mes[mesid="${id}"] .mi-panel [data-mi-tab="diary"]`);
+        }, [lastId, placement]);
+    };
+    check('дневник появляется сразу после ответа отдельным блоком', await diaryOrder('bottom'));
+    check('дневник можно переместить в начало ответа', await diaryOrder('top'));
+    await diaryOrder('bottom');
+
+    // Удаление отметины из раннего сообщения должно убрать её и из уже
+    // рассчитанных будущих состояний; иначе следующий ответ воскресит след.
+    const firstMarkId = await page.evaluate(() => window.__st.chat.findIndex((m) => m.extra?.megainfo?.state?.marks?.length));
+    const markId = await page.evaluate((id) => window.__st.chat[id].extra.megainfo.state.marks[0].id, firstMarkId);
+    await page.click(`#chat .mes[mesid="${firstMarkId}"] .mi-tab[data-mi-tab="body"]`);
+    await page.click(`#chat .mes[mesid="${firstMarkId}"] [data-mi-act="remove-mark"][data-mi-mark="${markId}"]`);
+    const removedEverywhere = await page.evaluate(([start, mark]) => window.__st.chat.slice(start).every((m) => !(m.extra?.megainfo?.state?.marks ?? []).some((x) => x.id === mark)), [firstMarkId, markId]);
+    check('кнопка удаления следа убирает его из текущего и последующих состояний', removedEverywhere);
 
     // ---------------------------------------------------------- 2. свайпы
     const before = (await lastBot()).data.state.time;
@@ -219,6 +259,29 @@ function check(name, ok, info = '') {
     const cont = await lastBot();
     check('continue без блока: состояние сообщения сохраняется', cont.data?.state?.time === contBefore, cont.data?.state?.time);
 
+    // ---------------------------------------------------------- 6f. несколько вставок, отключение модулей
+    await page.evaluate(() => { window.__phone = true; window.__card = true; });
+    await send('Телефон и бумажный чек в одной сцене', 'good');
+    const mixed = await lastBot();
+    const mixedSelector = `#chat .mes[mesid="${mixed.id}"] .mes_text`;
+    check('телефон и карточка могут появиться в одном ответе', (await page.$$(`${mixedSelector} [data-mi-inline]`)).length === 2);
+    await page.selectOption('.megainfo-settings [data-mi-setting="theme"]', 'glass');
+    check('перерисовка не дублирует встроенные блоки', (await page.$$(`${mixedSelector} [data-mi-inline]`)).length === 2);
+    await page.click('.megainfo-settings [data-mi-setting="modules.phone.enabled"]');
+    check('выключенный телефон скрыт и не оставляет сырой маркер', !(await page.$(`${mixedSelector} [data-mi-inline="phone"]`)) && !/\[\[mi:phone\]\]/.test(await page.locator(mixedSelector).innerText()));
+    await page.click('.megainfo-settings [data-mi-setting="modules.phone.enabled"]');
+    // Старые сообщения 0.2.x хранят карточку/телефон без маркеров в тексте.
+    await page.evaluate(async (id) => {
+        const c = SillyTavern.getContext();
+        const m = c.chat[id];
+        m.mes = m.mes.replace(/\[\[mi:(?:phone|card)\]\]/g, '');
+        if (m.swipes) m.swipes[m.swipe_id] = m.mes;
+        c.updateMessageBlock(id);
+        await c.eventSource.emit(c.eventTypes.MESSAGE_UPDATED, id);
+    }, mixed.id);
+    check('ответ без маркеров всё равно показывает телефон и карточку в тексте', (await page.$$(`${mixedSelector} [data-mi-inline]`)).length === 2);
+    await page.evaluate(() => { window.__phone = false; window.__card = false; });
+
     // ---------------------------------------------------------- 7. выключенное расширение
     await page.evaluate(() => { window.__st.extensionSettings.megainfo.enabled = false; });
     await send('Выключено', 'good');
@@ -247,6 +310,39 @@ function check(name, ok, info = '') {
     await page.selectOption('.megainfo-settings [data-mi-setting="layout"]', 'stack');
     const el = await page.$(`#chat .mes[mesid="${mid}"] .mi-panel`);
     await el.screenshot({ path: path.join(shotsDir, 'layout-stack.png') });
+
+    // MBTI раскрывается с телефона.
+    const mbti = page.locator(`#chat .mes[mesid="${mid}"] .mi-mbti`).first();
+    if (await mbti.count()) {
+        await mbti.evaluate((el) => { for (let p = el.parentElement; p; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true; });
+        await mbti.locator('summary').click();
+        check('MBTI раскрывается тапом и показывает описание', await mbti.evaluate((el) => el.open && el.textContent.length > 60));
+    } else check('MBTI имеет доступное раскрываемое описание', false);
+
+    const firstSection = page.locator(`#chat .mes[mesid="${mid}"] .mi-sec`).first();
+    const sectionKey = await firstSection.getAttribute('data-mi-sec');
+    await firstSection.locator(':scope > summary').click();
+    await page.waitForTimeout(50);
+
+    // Настоящая перезагрузка страницы с восстановлением сохранённого чата
+    // отбрасывает всю оперативную память расширения.
+    const toggleSelector = `#chat .mes[mesid="${mid}"] [data-mi-act="toggle"]`;
+    await page.click(toggleSelector);
+    const collapsedBeforeReload = await page.evaluate((id) => window.__st.chat[id].extra.megainfo.ui?.collapsed, mid);
+    check('свёрнутость сохранена в данных сообщения', collapsedBeforeReload === true);
+    await page.evaluate(() => window.__persistForReload());
+    await page.reload();
+    await page.waitForFunction(() => typeof globalThis.megaInfoInterceptor === 'function' && document.querySelector('.megainfo-settings'));
+    await page.waitForFunction((id) => document.querySelector(`#chat .mes[mesid="${id}"] .mi-panel`), mid);
+    const collapseAfterReload = await page.evaluate((id) => {
+        const data = window.__st.chat[id].extra.megainfo;
+        const panel = document.querySelector(`#chat .mes[mesid="${id}"] .mi-panel`);
+        return data.ui?.collapsed === true && panel.classList.contains('mi-collapsed');
+    }, mid);
+    check('свёрнутая панель остаётся свёрнутой после перезагрузки страницы', collapseAfterReload);
+    await page.click(toggleSelector);
+    const sectionAfterReload = page.locator(`#chat .mes[mesid="${mid}"] .mi-sec[data-mi-sec="${sectionKey}"]`);
+    check('свёрнутый раздел стопки остаётся свёрнутым после перезагрузки', await sectionAfterReload.evaluate((el) => !el.open));
 
     check('нет ошибок JS на странице', errors.length === 0, errors.slice(0, 5).join(' | '));
     await page.screenshot({ path: path.join(shotsDir, 'settings.png'), fullPage: false });

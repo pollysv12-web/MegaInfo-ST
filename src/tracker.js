@@ -5,11 +5,11 @@ import {
 } from './settings.js';
 import {
     applyData, buildContext, buildInstruction, CONTEXTUAL, extractBlocks, Extras, LEGACY_TAGS, Loc,
-    looksValid, OUR_TAGS, parseJsonBlock, TRACKERS,
+    looksValid, OUR_TAGS, parseJsonBlock, TRACKERS, stripPlacementMarkers,
 } from './core/engine.js';
 import {
     botMessagesBetween, clearData, findPreviousState, findPreviousWith, getData, getMessage, getPlaces,
-    isBotMessage, markPlaceTry, placeTries, saveChat, savePlace, setData, setMessageText,
+    isBotMessage, markPlaceTry, placeTries, saveChat, savePlace, setData, setMessageText, filterDismissedMarks,
 } from './store.js';
 import { cardContext, chatHistory, errorText, recentStory, sideRequest } from './request.js';
 import * as Log from './log.js';
@@ -20,6 +20,7 @@ const SCENE = ['sims', 'relations', 'world', 'marks', 'slowburn'];
 
 /** Сообщения, для которых сейчас идёт отдельный запрос: id -> Promise */
 export const pending = new Map();
+export const pendingDiary = new Set();
 /** id сообщений, где отдельный запрос пересчитывает числа (их стоит дождаться перед следующим ответом) */
 const pendingScene = new Set();
 
@@ -35,6 +36,7 @@ export function setChangeListener(fn) { onChange = fn; }
 export function clearPending() {
     pending.clear();
     pendingScene.clear();
+    pendingDiary.clear();
 }
 
 // ---------------------------------------------------------------- опции
@@ -67,7 +69,7 @@ export function cleanTagList(s = getSettings()) {
 /** Чистит текст сообщения для промпта. depth — насколько сообщение далеко от конца. */
 export function cleanForPrompt(text, depth, s = getSettings()) {
     if (typeof text !== 'string' || !text) return text;
-    let out = /<\w/.test(text) ? stripTagBlocks(text, cleanTagList(s)) : text;
+    let out = stripPlacementMarkers(/<\w/.test(text) ? stripTagBlocks(text, cleanTagList(s)) : text);
     const n = Number(s.stripHtmlDepth) || 0;
     if (n > 0 && depth >= n) out = stripAnyHtml(out);
     return out;
@@ -151,7 +153,7 @@ export function injectionFor(targetId) {
 
 function storeResult(id, message, res, { scene }) {
     if (scene) {
-        setData(message, 'state', res.state);
+        setData(message, 'state', filterDismissedMarks(res.state));
         const upd = [...new Set([...(getData(message)?.upd ?? []), ...res.upd])];
         setData(message, 'upd', upd);
         setData(message, 'err', undefined);
@@ -372,6 +374,7 @@ export function runSeparate(messageId, modules, o = {}) {
                 Log.info(`#${id}: повторяю отдельный запрос`);
                 pending.delete(id);
                 pendingScene.delete(id);
+                pendingDiary.delete(id);
                 return runSeparate(id, request, { ...o, retry: (o.retry ?? 0) + 1 });
             }
             if (scene) setData(message, 'err', { text: r.error, raw: json.slice(0, 4000) });
@@ -391,6 +394,7 @@ export function runSeparate(messageId, modules, o = {}) {
             Log.info(`#${id}: пробую ещё раз (${kind})`);
             pending.delete(id);
             pendingScene.delete(id);
+            pendingDiary.delete(id);
             return runSeparate(id, modules, { ...o, retry: 1, kind });
         }
         if (stillValid() && SCENE.some((k) => [...modules].includes(k))) {
@@ -402,12 +406,14 @@ export function runSeparate(messageId, modules, o = {}) {
     });
 
     pending.set(id, job);
+    if ([...modules].includes('diary')) pendingDiary.add(id);
     if (SCENE.some((k) => [...modules].includes(k))) pendingScene.add(id);
     onChange(id);
     job.finally(() => {
         if (pending.get(id) === job) {
             pending.delete(id);
             pendingScene.delete(id);
+            pendingDiary.delete(id);
         }
         onChange(id);
     });

@@ -117,6 +117,10 @@ export async function initSettingsUi(h) {
         if (this.type === 'checkbox') value = this.checked;
         else if (this.type === 'number') value = Number($(this).val());
         else value = $(this).val();
+        if (path === 'modules.sims.stats.arousal.decay') {
+            value = Number.isFinite(value) ? Math.min(0, value) : 0;
+            $(this).val(value);
+        }
         setPath(getSettings(), path, value);
         if (path === 'theme') $('#megainfo_custom_colors').toggle(value === 'custom');
         hooks.onChange(path, value);

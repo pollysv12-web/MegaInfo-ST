@@ -3,12 +3,13 @@
 
 import { MODULE, VERSION, getSettings, saveSettings } from './src/settings.js';
 import { OUR_TAGS } from './src/core/engine.js';
-import { getData, getMessage, isBotMessage, lastBotMessageId, saveChat, setData } from './src/store.js';
+import { dismissMark, getData, getMessage, isBotMessage, lastBotMessageId, saveChat, setData } from './src/store.js';
 import {
-    allTrackerModules, blockingJobs, buildOpts, cleanForPrompt, clearPending, handleEdited, handleReceived, injectionFor, pending, runSeparate,
+    allTrackerModules, blockingJobs, buildOpts, cleanForPrompt, clearPending, handleEdited, handleReceived, injectionFor, pending, pendingDiary, runSeparate,
     setChangeListener,
 } from './src/tracker.js';
-import { mountCard, renderPanel } from './src/render.js';
+import { renderDiary, renderPanel } from './src/render.js';
+import { renderInline } from './src/inline.js';
 import { initSettingsUi, loadValues, refreshTokenStats } from './src/ui-settings.js';
 import { addWandButton } from './src/quick.js';
 import * as Log from './src/log.js';
@@ -16,9 +17,6 @@ import { stripTagBlocks } from './src/util.js';
 
 const PROMPT_KEY = 'megainfo_inject';
 const ctx = () => SillyTavern.getContext();
-
-/** Свёрнутость панелей, которую пользователь поменял руками: id -> bool */
-const collapsedOverride = new Map();
 
 // ------------------------------------------------------------------ промпт
 
@@ -106,24 +104,59 @@ function render(messageId) {
 
     const s = getSettings();
     const message = getMessage(id);
-    if (!s.enabled || !isBotMessage(message)) return;
-    const isPending = pending.has(id);
-    if (!isPending && !shouldShow(id)) return;
-
+    if (!isBotMessage(message)) return;
     const opts = buildOpts();
-    const collapsed = collapsedOverride.has(id) ? collapsedOverride.get(id) : !!s.collapsed;
+    const data = getData(message);
+    const $text = $block.children('.mes_text');
+    renderInline($text[0], data, opts);
+    if (!s.enabled) return;
+    const isPending = pending.has(id);
+    // Дневник и сюжетные вставки принадлежат ответу и не исчезают из старых сообщений вместе с панелью.
+    if (opts.on.diary && (data?.diary || pendingDiary.has(id))) {
+        const content = data?.diary ? renderDiary(data.diary, opts)
+            : '<div class="mi-diary mi-muted" role="status"><i class="fa-solid fa-spinner fa-spin"></i> Пишу дневник…</div>';
+        const $diary = $('<div class="mi-host mi-diary-host"></div>')
+            .attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(content);
+        if (s.modules.diary.placement === 'top') $text.before($diary);
+        else $text.after($diary);
+    }
+    if (!isPending && !shouldShow(id)) { restoreDetails($mes, message); return; }
+
+    const collapsed = data?.ui?.collapsed ?? !!s.collapsed;
     const html = renderPanel({
-        data: getData(message), opts, pending: isPending, isLast: id === lastBotMessageId(), collapsed, activeTab: s.lastTab,
+        data, opts, pending: isPending, isLast: id === lastBotMessageId(), collapsed, activeTab: s.lastTab,
     });
     if (!html) return;
 
-    const $host = $('<div class="mi-host"></div>').attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(html);
-    const $text = $block.children('.mes_text');
-    if (s.placement === 'bottom') $text.after($host);
-    else $text.before($host);
+    const $host = $('<div class="mi-host mi-info-host"></div>').attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(html);
+    if (s.placement === 'bottom') $block.children('.mi-diary-host').length && s.modules.diary.placement !== 'top'
+        ? $block.children('.mi-diary-host').after($host) : $text.after($host);
+    else $block.children('.mi-diary-host').length && s.modules.diary.placement === 'top'
+        ? $block.children('.mi-diary-host').before($host) : $text.before($host);
+    restoreDetails($mes, message);
+}
 
-    const card = getData(message)?.card;
-    if (card) $host.find('[data-mi-card]').each((_, el) => mountCard(el, card));
+function restoreDetails($mes, message) {
+    const details = getData(message)?.ui?.details ?? {};
+    $mes.find('.mi-host details').each((i, el) => {
+        const summary = el.querySelector('summary')?.textContent?.trim() ?? '';
+        const key = el.dataset.miSec ? `section:${el.dataset.miSec}` : `${i}:${summary}`;
+        el.dataset.miDetailKey = key;
+        if (Object.hasOwn(details, key)) el.open = !!details[key];
+        el.dataset.miOpen = String(el.open);
+    });
+}
+
+function onDetailsToggle(event) {
+    const el = event.target;
+    if (el.tagName !== 'DETAILS' || !el.dataset.miDetailKey || el.dataset.miOpen === String(el.open)) return;
+    el.dataset.miOpen = String(el.open);
+    const id = Number(el.closest('.mes')?.getAttribute('mesid'));
+    const message = getMessage(id);
+    if (!message) return;
+    const ui = getData(message)?.ui ?? {};
+    setData(message, 'ui', { ...ui, details: { ...ui.details, [el.dataset.miDetailKey]: el.open } });
+    saveChat().catch((e) => Log.error('не удалось сохранить вид панели: ' + e.message));
 }
 
 export function renderAll() {
@@ -168,10 +201,17 @@ function onActionClick(event) {
     if (act === 'regen') runSeparate(id, allTrackerModules());
     if (act === 'diary') runSeparate(id, ['diary']);
     if (act === 'edit') editState(id);
+    if (act === 'remove-mark' && dismissMark(id, String($btn.attr('data-mi-mark')))) {
+        saveChat().catch((e) => Log.error('не удалось сохранить удаление следа: ' + e.message));
+        renderAll();
+    }
     if (act === 'toggle') {
         const s = getSettings();
-        const now = collapsedOverride.has(id) ? collapsedOverride.get(id) : !!s.collapsed;
-        collapsedOverride.set(id, !now);
+        const message = getMessage(id);
+        const ui = getData(message)?.ui ?? {};
+        const now = ui.collapsed ?? !!s.collapsed;
+        setData(message, 'ui', { ...ui, collapsed: !now });
+        saveChat().catch((e) => Log.error('не удалось сохранить вид панели: ' + e.message));
         render(id);
     }
 }
@@ -254,7 +294,6 @@ async function init() {
     eventSource.on(E.MORE_MESSAGES_LOADED, safe(() => setTimeout(renderAll, 0)));
     eventSource.on(E.CHAT_CHANGED, safe(() => {
         clearPending();
-        collapsedOverride.clear();
         clearInjection();
         setTimeout(() => {
             renderAll();
@@ -266,6 +305,7 @@ async function init() {
 
     $(document).on('click', '.mi-host .mi-act', onActionClick);
     $(document).on('click', '.mi-host .mi-tab', onTabClick);
+    document.addEventListener('toggle', onDetailsToggle, true);
 
     addWandButton(() => {
         saveSettings();

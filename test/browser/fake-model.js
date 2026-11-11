@@ -54,7 +54,9 @@
     window.__st.model = function (kind, payload) {
         if (kind === 'main') {
             window.__calls.main++;
-            const story = `Алекс поставил чашку на стол (ход ${window.__calls.main}). «Ты опять пришёл», — сказал он.`;
+            let story = `Алекс поставил чашку на стол (ход ${window.__calls.main}). «Ты опять пришёл», — сказал он.`;
+            if (window.__phone) story += '\n\nОн достал телефон и открыл переписку. [[mi:phone]]\n\nУбрав телефон, Алекс вернулся к разговору.';
+            if (window.__card) story += '\n\nАлекс развернул бумажный чек. [[mi:card]]\n\nОн отложил чек и снова поднял глаза.';
             const instr = payload.injection || '';
             if (!instr.includes('[MegaInfo · status tracker]')) return story;
             const b = window.__behavior;

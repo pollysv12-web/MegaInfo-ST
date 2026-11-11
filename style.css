@@ -397,6 +397,22 @@
 .mi-error { color: var(--mi-warn); border-bottom: 1px solid var(--mi-line); }
 .mi-card-host { display: block; max-width: 100%; }
 
+/* Блоки ответа сохраняют своё место независимо от свёрнутости основной панели. */
+.mi-slot { display: block; }
+.mi-slot:empty { display: none; }
+.mi-inline { display: block; margin: 14px 0; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.mi-inline .mi-phones { padding: 0; }
+.mi-diary-host { margin: 12px 0; border: 1px solid var(--mi-line); border-radius: 10px; background: var(--mi-bg); }
+.mi-diary-host .mi-diary { padding: 12px; }
+.mi-main-relation { padding: 8px 12px; border-bottom: 1px solid var(--mi-line); }
+.mi-main-relation .mi-aff { margin: 4px 0 0; }
+.mi-mbti { display: inline-block; max-width: 100%; }
+.mi-mbti > summary { cursor: pointer; color: var(--mi-text); font-size: inherit; }
+.mi-mbti-description { padding: 8px 0 4px; color: var(--mi-muted); line-height: 1.5; font-size: .9em; }
+.mi-mark-remove { margin-left: auto; border: 0; border-radius: 5px; background: transparent; color: var(--mi-muted); cursor: pointer; min-width: 30px; min-height: 30px; }
+.mi-mark-remove:hover, .mi-mark-remove:focus-visible { color: var(--mi-text); background: var(--mi-card); }
+.mi-excitement { font-size: .85em; }
+
 @media (max-width: 760px) {
     .mi-stat { grid-template-columns: 92px 1fr 56px; gap: 6px; }
     .mi-tab-label { display: none; }

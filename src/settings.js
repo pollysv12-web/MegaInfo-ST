@@ -1,14 +1,16 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.2.1';
+export const VERSION = '0.3.0';
+
+const SETTINGS_VERSION = 3;
 
 /** Статы sims. decay — изменение за 2 часа времени в ролевой. */
 export const STAT_DEFS = {
-    food: { label: 'Сытость', icon: 'fa-utensils', decay: -10, critLow: 15 },
-    hygiene: { label: 'Гигиена', icon: 'fa-droplet', decay: -5, critLow: 15 },
+    food: { label: 'Сытость', icon: 'fa-utensils', decay: -10, critLow: 20 },
+    hygiene: { label: 'Гигиена', icon: 'fa-droplet', decay: -5, critLow: 25 },
     energy: { label: 'Бодрость', icon: 'fa-bolt', decay: -15, critLow: 15 },
-    arousal: { label: 'Возбуждение', icon: 'fa-fire', decay: 10, critHigh: 85 },
+    arousal: { label: 'Возбуждение', icon: 'fa-fire', decay: -10, critHigh: 85 },
 };
 
 /** Порядок и подписи модулей (используется в настройках, быстром меню и вкладках). */
@@ -25,6 +27,7 @@ export const MODULE_LIST = [
 ];
 
 export const DEFAULTS = {
+    schemaVersion: SETTINGS_VERSION,
     enabled: true,
     language: 'Russian',      // на каком языке модель пишет текст в блоках (Russian | English | Ukrainian)
     userPronoun: 'auto',      // auto | he | she | they
@@ -65,12 +68,14 @@ export const DEFAULTS = {
             npcTab: true,         // NPC отдельной вкладкой
             showMoney: true,
             showProfile: true,
+            birthdays: true,      // учитывать д/р в сцене, недостающие даты назначаются один раз
+            userThoughts: false,  // разрешить модели писать внутренние мысли {{user}}
             currency: '₽',
             stats: {
                 food: { on: true, decay: -10 },
                 hygiene: { on: true, decay: -5 },
                 energy: { on: true, decay: -15 },
-                arousal: { on: true, decay: 10 },
+                arousal: { on: true, decay: -10 },
             },
         },
         relations: {
@@ -84,6 +89,7 @@ export const DEFAULTS = {
             enabled: false,
             every: 1,
             speed: 'slow',        // glacial | slow | medium | fast
+            influence: 'medium',  // light | medium | strong — влияние стадии на поведение
             dayLock: true,        // не больше одной новой стадии за игровой день
             strict: true,         // запрещать модели перескакивать стадии
             target: '',           // с кем слоуберн ('' = {{char}})
@@ -109,11 +115,13 @@ export const DEFAULTS = {
             enabled: true,
             every: 1,
             healing: 'realistic', // fast | realistic | slow
+            trackPermanent: false, // новые тату/пирсинг; исходные особенности не добавляются
             notice: 'subtle',     // subtle | normal | dramatic
         },
         diary: {
             enabled: true,
-            mode: 'separate',     // separate | inline
+            mode: 'inline',       // separate | inline — вместе с ответом, без ожидания второго запроса
+            placement: 'bottom',  // top | bottom — отдельная запись до/после текста ответа
             frequency: 'every',   // every | n | day | manual
             every: 3,
             length: 'medium',     // short | medium | long | huge
@@ -170,14 +178,25 @@ function migrate(s) {
         s.theme = { glass: 'glass', minimal: 'minimal', solid: 'tavern' }[s.style] ?? 'tavern';
         delete s.style;
     }
+    if ((Number(s.schemaVersion) || 0) < SETTINGS_VERSION) {
+        // В 0.2 возбуждение росло само (+10/2 ч). Один раз меняем только
+        // положительную скорость; выбранные пользователем 0 и спад сохраняем.
+        const arousal = s.modules?.sims?.stats?.arousal;
+        if (arousal && Number(arousal.decay) > 0) arousal.decay = -10;
+        s.schemaVersion = SETTINGS_VERSION;
+    }
     return s;
 }
 
 export function getSettings() {
-    const { extensionSettings } = SillyTavern.getContext();
+    const c = SillyTavern.getContext();
+    const { extensionSettings } = c;
     if (!extensionSettings[MODULE]) extensionSettings[MODULE] = {};
+    const beforeVersion = extensionSettings[MODULE].schemaVersion;
     migrate(extensionSettings[MODULE]);
-    return mergeDefaults(extensionSettings[MODULE], structuredClone(DEFAULTS));
+    const settings = mergeDefaults(extensionSettings[MODULE], structuredClone(DEFAULTS));
+    if (settings.schemaVersion !== beforeVersion) c.saveSettingsDebounced?.();
+    return settings;
 }
 
 export function saveSettings() {

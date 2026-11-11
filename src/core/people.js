@@ -12,10 +12,10 @@ export const DEFAULT_STAT = { food: 70, hygiene: 80, energy: 70, arousal: 10 };
 
 const STAT_NAMES = { food: 'сытость', hygiene: 'гигиена', energy: 'бодрость', arousal: 'возбуждение' };
 const WARNINGS = {
-    food: 'сильный голод',
-    hygiene: 'давно не мылся(-ась), нужен душ',
-    energy: 'на исходе сил, клонит в сон',
-    arousal: 'сильное возбуждение, сложно думать о другом',
+    food: 'сильный голод: рассеянность, урчание живота или поиск еды могут быть заметны',
+    hygiene: 'гигиена ниже 25: запах, несвежая кожа или одежда могут быть заметны вблизи',
+    energy: 'сильная усталость: зевота, замедленные реакции, клонит в сон',
+    arousal: 'высокое сексуальное возбуждение: возможны сдержанные телесные реакции, но желание не равно действию или согласию',
 };
 
 const ROLE_ORDER = { char: 0, user: 1, npc: 2 };
@@ -32,6 +32,61 @@ export function scenePeople(state) {
 
 const simsFull = (opts) => opts.on.sims && opts.s.modules.sims.variant !== 'lite';
 const withStats = (opts) => simsFull(opts) && opts.stats.length > 0;
+const userThoughts = (opts) => opts.s.modules.sims.userThoughts === true
+    && (!opts.on.relations || opts.s.modules.relations.thoughts !== false);
+
+/** A real calendar date; a missing year is intentional, so no age is invented. */
+export function birthdayParts(value) {
+    const text = String(value ?? '').trim();
+    let day, month, year;
+    const local = text.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{4}))?$/);
+    const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (local) [, day, month, year] = local;
+    else if (iso) [, year, month, day] = iso;
+    else return null;
+    day = Number(day); month = Number(month);
+    const checkYear = year ? Number(year) : 2000;
+    const date = new Date(Date.UTC(checkYear, month - 1, day));
+    if (date.getUTCFullYear() !== checkYear || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return { day, month, year: year ? checkYear : null };
+}
+
+/** The same person keeps the same fallback birthday through reloads and swipes. */
+export function generatedBirthday(person, opts) {
+    const seed = `${normName(opts.charName)}|${person.role}|${normName(person.name)}`;
+    let hash = 2166136261;
+    for (const c of seed) hash = Math.imul(hash ^ c.codePointAt(0), 16777619) >>> 0;
+    const date = new Date(Date.UTC(2001, 0, 1 + hash % 365));
+    return `${String(date.getUTCDate()).padStart(2, '0')}.${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function ensureBirthday(person, opts, supplied) {
+    person.profile ??= {};
+    const incoming = str(supplied, 20);
+    if (birthdayParts(incoming) && (!birthdayParts(person.profile.birthday) || person.profile.birthdayGenerated)) {
+        person.profile.birthday = incoming;
+        delete person.profile.birthdayGenerated;
+    }
+    if (opts.s.modules.sims.birthdays !== false && (person.role === 'char' || person.role === 'user')
+        && !birthdayParts(person.profile.birthday)) {
+        person.profile.birthday = generatedBirthday(person, opts);
+        person.profile.birthdayGenerated = true;
+    }
+}
+
+export function birthdayLines(state, opts) {
+    if (opts.s.modules.sims.birthdays === false) return [];
+    const today = birthdayParts(state?.date);
+    if (!today) return [];
+    const lines = [];
+    for (const p of Object.values(state.people ?? {})) {
+        if (p.role !== 'char' && p.role !== 'user') continue;
+        const b = birthdayParts(p.profile?.birthday);
+        if (!b || b.day !== today.day || b.month !== today.month) continue;
+        lines.push(`TODAY is ${p.name}'s birthday in the story. Close friends or family may already know and acknowledge it naturally; strangers know only if told. Respect the scene and each character's personality; no compulsory party, gifts, or omniscient announcements.`);
+    }
+    return lines;
+}
 
 // ---------------------------------------------------------------- состояние для модели
 
@@ -48,6 +103,10 @@ function personLine(p, opts) {
         parts.push(`affinity→${opts.userName}: ${Math.round(p.aff)}${p.rel ? ` (${p.rel})` : ''}`);
     }
     if (p.mood && p.role !== 'user') parts.push(`настроение: ${p.mood}`);
+    if (simsFull(opts) && p.excitement > 0) parts.push(`эмоциональный подъём (НЕ сексуальный): ${Math.round(p.excitement)}`);
+    if (simsFull(opts) && opts.s.modules.sims.birthdays !== false && birthdayParts(p.profile?.birthday)) {
+        parts.push(`день рождения: ${p.profile.birthday}${p.profile.birthdayGenerated ? ' (автоматическая дата; канон может уточнить)' : ''}`);
+    }
     if (p.outfit) parts.push(`одежда: ${p.outfit}`);
     return `- ${p.name} [${p.role}]: ${parts.join(' · ') || '—'}`;
 }
@@ -58,11 +117,17 @@ export function collectWarnings(state, opts) {
     for (const p of scenePeople(state)) {
         if (!p.stats) continue;
         for (const k of opts.stats) {
-            const def = STAT_DEFS[k];
+            const def = STAT_DEFS[k] ?? {};
             const v = p.stats[k];
             if (v === undefined) continue;
-            if ((def.critLow !== undefined && v < def.critLow) || (def.critHigh !== undefined && v > def.critHigh)) {
-                out.push({ id: p.id, name: p.name, stat: k, value: v, text: WARNINGS[k] });
+            const low = k === 'hygiene' ? v < 25 : k === 'food' ? v <= 20 : k === 'energy' ? v <= 15 : def.critLow !== undefined && v < def.critLow;
+            const high = k === 'arousal' ? v >= 85 : def.critHigh !== undefined && v >= def.critHigh;
+            if (low || high) {
+                const critical = (k === 'food' || k === 'energy') && v <= 0;
+                const text = critical
+                    ? `${WARNINGS[k]}; критическое истощение — возможны слабость, головокружение или обморок, если это обосновано длительностью и событиями сцены`
+                    : WARNINGS[k];
+                out.push({ id: p.id, name: p.name, stat: k, value: v, text, critical });
             }
         }
         if (opts.s.modules.sims.showMoney && p.money !== undefined && p.money !== null && toNumber(p.money) < 1000) {
@@ -94,9 +159,11 @@ export function stateLines(state, opts) {
 
     const warnings = collectWarnings(state, opts);
     if (warnings.length) {
-        lines.push('Warnings (reflect them naturally in behaviour, without melodrama): '
+        lines.push('Needs to reflect naturally in behaviour, without melodrama (these numbers are private state, not something other characters can read): '
             + warnings.map((w) => `${w.name} — ${w.text}`).join('; ') + '.');
+        lines.push('Only observable signs can be noticed. Reactions must fit proximity and personality: a discreet offer, a glance, a pause, or no comment. No compulsory shaming, interrogation, panic, sexual action or consent. Low food/energy can cause faintness when plausible, not an automatic collapse from a percentage. Do not decide the user’s actions, thoughts, feelings or loss of consciousness unless their established roleplay permissions allow it. Ordinary excitement, joy, competitiveness or adrenaline are NOT sexual arousal; only sexual arousal at 85+ may subtly influence behaviour.');
     }
+    if (simsFull(opts)) lines.push(...birthdayLines(state, opts));
     return lines;
 }
 
@@ -121,11 +188,12 @@ export function schema(state, request, opts) {
     if (full) Object.assign(char, { mood: '…' });
     char.outfit = '…';
     if (full || (rel && opts.s.modules.relations.thoughts)) char.thought = '…';
-    if (stats) char.d = zero;
+    if (stats) char.d = { ...zero, excitement: 0 };
     if (rel) Object.assign(char, { aff: 0, rel: '…' });
 
     const user = { name: U, role: 'user', outfit: '…' };
-    if (stats) user.d = zero;
+    if (stats) user.d = { ...zero, excitement: 0 };
+    if ((full || rel) && userThoughts(opts)) user.thought = '…';
     out.people = [char, user];
 
     const npcMax = Number(opts.s.modules.sims.npcMax) || 0;
@@ -134,7 +202,7 @@ export function schema(state, request, opts) {
         if (full) npc.mood = '…';
         if (full && opts.s.modules.sims.npcDetail === 'full') {
             npc.thought = '…';
-            if (stats) npc.d = zero;
+            if (stats) npc.d = { ...zero, excitement: 0 };
         } else if (rel && opts.s.modules.relations.npc && opts.s.modules.relations.thoughts) {
             npc.thought = '…';
         }
@@ -160,15 +228,23 @@ export function rules(state, request, opts) {
     r.push(`- people: everyone physically present in the scene: ${C} first, then ${U}, then ${npcMax > 0 ? `at most ${npcMax} most important NPC(s)` : 'NO NPCs'}. Skip people who are absent.`);
     if (stats) {
         r.push(`- Stats are 0–100: ${opts.stats.map((k) => `${k} = ${STAT_NAMES[k]}`).join(', ')}.`);
-        r.push('- d: change caused ONLY by events of this reply (full meal food +40…+60, snack +15, workout energy −20 and hygiene −20, kissing arousal +10…+30). 0 if nothing happened. Passive change over time is applied by the system — never include it.');
+        r.push('- d: change caused ONLY by events of this reply (full meal food +40…+60, snack +15, workout energy −20 and hygiene −20). 0 if nothing happened. Passive change over time is applied by the system — never include it.');
         r.push('- set: absolute value ONLY for full resets: woke up after a full night of sleep → {"energy":90}; shower/bath → {"hygiene":100}; orgasm → {"arousal":0}. Example: {"name":"…","role":"char","set":{"hygiene":100}}.');
+        r.push('- arousal is SEXUAL arousal only. Ordinary joy, nervous energy, competition and adrenaline change the separate emotional field d.excitement (0 if none), never d.arousal. Actual sexual attraction/touch can raise arousal; loss of interest, discomfort, distraction or satisfaction can LOWER it. Never add arousal every scene by habit. The system passively lets it settle. Arousal below 85 does not steer behaviour; at 85+ express only context-appropriate subtle cues, never forced sexual behaviour or implied consent.');
+        r.push('- excitement is a separate 0–100 emotional activation value, outside stats; use d.excitement for event changes or set.excitement:0 when fully calmed. It is not attraction and does not require sexual behaviour.');
+        r.push('- Low needs have proportionate observable effects: hygiene below 25, food at 20 or less, energy at 15 or less. Other people react only to visible signs and in character, without repetitive announcements, disgust or melodrama. At zero food/energy, faintness or fainting is possible only if story circumstances support it; respect the user’s control over their character.');
     }
     if (full) r.push('- mood: 1–3 words. outfit: short but concrete (what is visible).');
     else r.push('- outfit: short but concrete (what is visible).');
+    r.push('- outfit is the COMPLETE currently worn visible outfit, updated even for partial changes: remove the jacket if taken off, retain the shirt/trousers, add the scarf if put on. Read the scene and the previous outfit; do not replace the whole outfit with just the changed item or keep removed garments. If fully undressed, say so explicitly. Clothing from wardrobe/image context is valid starting context, not a reason to ignore later changes in the story.');
     if (full || (rel && opts.s.modules.relations.thoughts)) {
         r.push(`- thought: one sentence of hidden inner monologue in first person — secret motives, real reaction to ${U}. Never said aloud.`);
     }
-    r.push(`- ${U}: only outfit${stats ? ' and d/set' : ''}. Never invent ${U}'s mood, thoughts or feelings.`);
+    if (userThoughts(opts)) {
+        r.push(`- ${U}: outfit${stats ? ', d/set' : ''} and thought are allowed. The user explicitly enabled their inner monologue in the status block; keep it consistent with their persona and the scene. This permission applies to the private thought field only, not to inventing their spoken lines, actions or consent in the story.`);
+    } else {
+        r.push(`- ${U}: only outfit${stats ? ' and d/set' : ''}. Never invent ${U}'s mood, thoughts or feelings.`);
+    }
     if (rel) {
         const step = Number(opts.s.modules.relations.maxStep) || 5;
         r.push(`- aff: CHANGE of this person's feelings toward ${U} caused by THIS reply. Usually 0; small things ±1…3; only strong events up to ±${step}. Never output the total — the system keeps it.`);
@@ -182,10 +258,14 @@ export function rules(state, request, opts) {
     const newFields = [];
     if (stats) newFields.push(`"stats":${JSON.stringify(Object.fromEntries(opts.stats.map((k) => [k, DEFAULT_STAT[k]])))}`);
     if (full && opts.s.modules.sims.showMoney) newFields.push('"money":15000');
-    if (full && opts.s.modules.sims.showProfile) newFields.push('"birthday":"DD.MM.YYYY","zodiac":"…","mbti":"INTJ — короткое описание"');
+    if (full && opts.s.modules.sims.showProfile) newFields.push('"birthday":"DD.MM or DD.MM.YYYY only if known from canon","zodiac":"…","mbti":"INTJ — короткое описание"');
     if (rel) newFields.push('"aff":0');
     if (newFields.length) {
         r.push(`- A person NOT listed in the current state gets "new": {${newFields.join(',')}} with values that fit them${rel ? ' (aff = starting attitude to ' + U + ', −100…100)' : ''}. Never send "new" for people already in the state.`);
+    }
+    if (full && opts.s.modules.sims.birthdays !== false) {
+        r.push('- Preserve canonical birthdays from character/persona context. If unknown, omit birthday: the system assigns one stable day/month without inventing an age. An existing person whose date is marked automatic or missing MAY send a top-level birthday field (e.g. {"name":"…","role":"char","birthday":"02.06.1997"}) to replace that fallback ONLY with an explicitly known canonical date. Do not use new for this correction; never replace an established canonical birthday or invent a correction.');
+        r.push('- Birthdays affect the story only on the matching in-story date: close people may remember naturally; strangers do not magically know. Merely seeing a profile date is not a reason to bring it up. On other dates, no forthcoming-birthday hints, countdowns, “your birthday is tomorrow” reminders or forced pre-celebration.');
     }
     return r;
 }
@@ -260,9 +340,16 @@ export function applyScene(next, base, data, opts) {
         if (!p.stats || !withStats(opts)) continue;
         for (const k of opts.stats) {
             if (p.stats[k] === undefined) continue;
-            const rate = opts.decay[k] ?? 0;
-            p.stats[k] = clamp(p.stats[k] + rate * decayMinutes / 120, 0, 100);
+            const rate = toNumber(opts.decay[k], 0);
+            if (k === 'arousal') {
+                // Legacy positive rates must never create attraction from the passage of time.
+                // Rest settles elevated arousal toward a quiet baseline without raising low values.
+                p.stats[k] = clamp(Math.max(Math.min(p.stats[k], DEFAULT_STAT.arousal), p.stats[k] - Math.abs(rate) * decayMinutes / 120), 0, 100);
+            } else {
+                p.stats[k] = clamp(p.stats[k] + rate * decayMinutes / 120, 0, 100);
+            }
         }
+        if (Number.isFinite(p.excitement)) p.excitement = clamp(p.excitement - 15 * decayMinutes / 120, 0, 100);
     }
 }
 
@@ -279,7 +366,8 @@ export function applyPeople(next, base, data, request, opts) {
     for (const p of Object.values(next.people)) {
         p.diff = {};
         p.affDiff = 0;
-        if (full || (rel && opts.s.modules.relations.thoughts)) p.thought = '';
+        if (full || (rel && opts.s.modules.relations.thoughts) || (p.role === 'user' && !userThoughts(opts))) p.thought = '';
+        if (full) ensureBirthday(p, opts);
     }
     next.scene = [];
     next.tx = [];
@@ -311,8 +399,9 @@ export function applyPeople(next, base, data, request, opts) {
                 role,
                 stats: st ? Object.fromEntries(Object.entries(st).map(([k, v]) => [k, clamp(v, 0, 100)])) : null,
                 money: isNew.money !== undefined ? toNumber(isNew.money, null) : null,
-                profile: { birthday: str(isNew.birthday, 20), zodiac: str(isNew.zodiac, 20), mbti: str(isNew.mbti, 60) },
+                profile: { birthday: birthdayParts(isNew.birthday) ? str(isNew.birthday, 20) : '', zodiac: str(isNew.zodiac, 20), mbti: str(isNew.mbti, 60) },
                 mood: '', outfit: '', thought: '', diff: {}, affDiff: 0,
+                excitement: stats ? clamp(toNumber(isNew.excitement, 0), 0, 100) : 0,
                 _old: null, _oldAff: null,
             };
             if (role !== 'user' && (rel || isNew.aff !== undefined)) {
@@ -323,7 +412,7 @@ export function applyPeople(next, base, data, request, opts) {
         } else {
             // Уже знакомый человек: профиль только дополняем, ничего не перезаписываем.
             person.profile ??= {};
-            for (const f of ['birthday', 'zodiac', 'mbti']) {
+            for (const f of ['zodiac', 'mbti']) {
                 if (!person.profile[f] && isNew[f]) person.profile[f] = str(isNew[f], 60);
             }
             if ((person.money === null || person.money === undefined) && isNew.money !== undefined) {
@@ -343,10 +432,12 @@ export function applyPeople(next, base, data, request, opts) {
             npcCount++;
         }
         if (person.role === 'npc' && role === 'char') person.role = 'char';
+        if (full) ensureBirthday(person, opts, isNew.birthday ?? entry.birthday);
 
         if (full && person.role !== 'user') person.mood = str(entry.mood, 60) || person.mood || '';
-        person.outfit = str(entry.outfit, 200) || person.outfit || '';
+        person.outfit = str(entry.outfit, 500) || person.outfit || '';
         if (person.role !== 'user' && (full || (rel && opts.s.modules.relations.thoughts))) person.thought = str(entry.thought, 500);
+        if (person.role === 'user' && userThoughts(opts) && (full || rel)) person.thought = str(entry.thought, 500);
 
         if (stats && person.stats) {
             for (const [k, v] of Object.entries(readStats(entry.set, opts.stats))) person.stats[k] = clamp(v, 0, 100);
@@ -354,6 +445,10 @@ export function applyPeople(next, base, data, request, opts) {
                 if (person.stats[k] === undefined) continue;
                 person.stats[k] = clamp(person.stats[k] + clamp(v, -100, 100), 0, 100);
             }
+            const emotionSet = readStats(entry.set, ['excitement']);
+            const emotionDelta = readStats(entry.d ?? entry.delta, ['excitement']);
+            if (emotionSet.excitement !== undefined) person.excitement = clamp(emotionSet.excitement, 0, 100);
+            if (emotionDelta.excitement !== undefined) person.excitement = clamp(toNumber(person.excitement, 0) + clamp(emotionDelta.excitement, -100, 100), 0, 100);
         }
         if (rel && person.role !== 'user' && (person.role === 'char' || relNpc)) {
             if (typeof person.aff !== 'number') person.aff = 0;
@@ -385,19 +480,20 @@ export function applyPeople(next, base, data, request, opts) {
     }
 }
 
-/** Разница с прошлым блоком (для стрелочек +5 / −10), округление. */
+/** Keep fractional decay between short turns; only the displayed arrows are integral. */
 export function finishPeople(next) {
     for (const p of Object.values(next.people ?? {})) {
         if (p.stats) {
             for (const k of Object.keys(p.stats)) {
-                p.stats[k] = Math.round(p.stats[k]);
-                if (p._old && p._old[k] !== undefined) p.diff[k] = p.stats[k] - Math.round(p._old[k]);
+                p.stats[k] = Math.round(p.stats[k] * 10000) / 10000;
+                if (p._old && p._old[k] !== undefined) p.diff[k] = Math.round(p.stats[k]) - Math.round(p._old[k]);
             }
         }
         if (typeof p.aff === 'number') {
             p.aff = Math.round(p.aff);
             p.affDiff = p._oldAff === null || p._oldAff === undefined ? 0 : p.aff - Math.round(p._oldAff);
         }
+        if (Number.isFinite(p.excitement)) p.excitement = Math.round(p.excitement * 10000) / 10000;
         delete p._old;
         delete p._oldAff;
     }

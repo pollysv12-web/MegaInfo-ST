@@ -1,6 +1,6 @@
 // Отдельный «тихий» запрос к модели только за блоками — не попадает в историю чата.
 
-import { LEGACY_TAGS, OUR_TAGS } from './core/engine.js';
+import { LEGACY_TAGS, OUR_TAGS, stripPlacementMarkers } from './core/engine.js';
 import { stripTagBlocks } from './util.js';
 
 const ctx = () => SillyTavern.getContext();
@@ -17,7 +17,7 @@ export function recentStory(uptoId, count, extraTags = []) {
     for (let i = from; i <= uptoId && i < chat.length; i++) {
         const m = chat[i];
         if (!m || m.is_system) continue;
-        const text = stripTagBlocks(String(m.mes ?? ''), [...OUR_TAGS, ...LEGACY_TAGS, ...extraTags]);
+        const text = stripPlacementMarkers(stripTagBlocks(String(m.mes ?? ''), [...OUR_TAGS, ...LEGACY_TAGS, ...extraTags]));
         if (!text) continue;
         parts.push(`### ${m.name}${m.is_user ? ' (user)' : ''}:\n${text}`);
     }
@@ -34,7 +34,7 @@ export function chatHistory(uptoId, count, extraTags = []) {
     for (let i = Math.max(0, uptoId - count + 1); i <= uptoId && i < chat.length; i++) {
         const m = chat[i];
         if (!m || m.is_system) continue;
-        const text = stripTagBlocks(String(m.mes ?? ''), [...OUR_TAGS, ...LEGACY_TAGS, ...extraTags]);
+        const text = stripPlacementMarkers(stripTagBlocks(String(m.mes ?? ''), [...OUR_TAGS, ...LEGACY_TAGS, ...extraTags]));
         if (!text) continue;
         const role = m.is_user ? 'user' : 'assistant';
         const content = `${m.name}: ${text}`;

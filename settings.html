@@ -61,7 +61,7 @@
                             </select>
                         </div>
                         <div class="mi-set-row">
-                            <label>Где показывать</label>
+                            <label>Где показывать панель</label>
                             <select class="text_pole" data-mi-setting="placement">
                                 <option value="top">Перед текстом ответа</option>
                                 <option value="bottom">После текста ответа</option>
@@ -73,6 +73,7 @@
                         </div>
                     </div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="collapsed"><span>Свёрнуты по умолчанию (видна только шапка)</span></label>
+                    <div class="mi-hint">Если свернуть или развернуть панель вручную, её состояние сохранится в этом чате. Дневник, телефон и карточки показываются отдельно от панели.</div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="hideWhileStreaming"><span>Прятать сырой блок, пока модель печатает</span></label>
                     <div class="mi-set-row">
                         <label>Свой CSS (для продвинутых, применяется поверх темы)</label>
@@ -205,6 +206,10 @@
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.npcTab"><span>NPC отдельной вкладкой</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.showMoney"><span>Деньги (баланс считает код по каждой трате)</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.showProfile"><span>Общая информация: д/р, знак зодиака, MBTI</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.birthdays"><span>Учитывать дни рождения в игре</span></label>
+                    <div class="mi-hint">Если дата не задана, она назначается один раз. Близкие могут вспомнить о дне рождения, когда он наступит в игре; заранее напоминать не будут. MBTI раскрывается по нажатию, краткая подсказка доступна и при наведении.</div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.userThoughts"><span>Разрешить мысли {{user}} в состоянии</span></label>
+                    <div class="mi-hint">Включайте, если разрешаете боту описывать ваши мысли. По умолчанию он пишет мысли только других персонажей. Одежда сохраняется между ответами и обновляется с учётом отдельных снятых или надетых вещей.</div>
                     <div class="mi-set-row"><label>Валюта</label><input type="text" class="text_pole" maxlength="6" data-mi-setting="modules.sims.currency"></div>
                     <div class="mi-set-sub">Статы и их изменение за 2 часа времени в ролевой</div>
                     <div class="mi-stat-table">
@@ -215,8 +220,9 @@
                         <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.energy.on"><span>Бодрость</span></label>
                         <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.energy.decay">
                         <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.arousal.on"><span>Возбуждение</span></label>
-                        <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.arousal.decay">
+                        <input type="number" class="text_pole" step="1" max="0" data-mi-setting="modules.sims.stats.arousal.decay">
                     </div>
+                    <div class="mi-hint">Возбуждение здесь — сексуальное: со временем снижается, 0 отключает пассивный спад. Азарт и радость учитываются отдельно. На поведение влияет только высокий сексуальный порог. Голод, усталость и низкая гигиена заметны окружающим с учётом ситуации и характера, без обязательной драмы.</div>
                 </div>
             </div>
 
@@ -258,6 +264,14 @@
                         </div>
                         <div class="mi-set-row"><label title="Пусто = персонаж чата ({{char}})">С кем (имя)</label><input type="text" class="text_pole" data-mi-setting="modules.slowburn.target" placeholder="{{char}}"></div>
                         <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.slowburn.every"></div>
+                        <div class="mi-set-row">
+                            <label>Влияние на игру</label>
+                            <select class="text_pole" data-mi-setting="modules.slowburn.influence">
+                                <option value="light">Слабое: лёгкие оттенки поведения</option>
+                                <option value="medium">Среднее: диалоги, доверие и близость</option>
+                                <option value="strong">Сильное: стадия задаёт темп отношений</option>
+                            </select>
+                        </div>
                     </div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.slowburn.dayLock"><span>Не больше одной новой стадии за игровой день</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.slowburn.strict"><span>Строго: бот не перескакивает стадии, даже если вы торопите</span></label>
@@ -316,7 +330,9 @@
                 </div>
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.enabled"><span>Включить</span></label>
-                    <div class="mi-hint">Следы заживают по времени ролевой: засос ~6 дней, синяк ~10, перелом ~7 недель; шрамы и тату остаются. Видны другим, только если не скрыты одеждой.</div>
+                    <div class="mi-hint">Раны, ожоги, обморожения, синяки и окрашивание кожи проходят по времени ролевой, с учётом вида и тяжести. Видны другим, только если не скрыты одеждой. Любой след можно убрать кнопкой рядом с ним в панели.</div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.marks.trackPermanent"><span>Отслеживать новые татуировки, пирсинг и постоянные метки</span></label>
+                    <div class="mi-hint">Только приобретённые по ходу игры: исходные татуировки, пирсинг и врождённые особенности не добавляются. У свежей татуировки или прокола сначала учитывается заживление.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
                             <label>Скорость заживления</label>
@@ -349,10 +365,17 @@
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.diary.enabled"><span>Включить</span></label>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
+                            <label>Где показывать дневник</label>
+                            <select class="text_pole" data-mi-setting="modules.diary.placement">
+                                <option value="top">В начале ответа</option>
+                                <option value="bottom">В конце ответа</option>
+                            </select>
+                        </div>
+                        <div class="mi-set-row">
                             <label>Как писать</label>
                             <select class="text_pole" data-mi-setting="modules.diary.mode">
-                                <option value="separate">Отдельным запросом (полная длина, не обрезается)</option>
-                                <option value="inline">В ответе бота (дешевле)</option>
+                                <option value="inline">Вместе с ответом бота (сразу, рекомендуется)</option>
+                                <option value="separate">Отдельным запросом (длиннее, нужно подождать)</option>
                             </select>
                         </div>
                         <div class="mi-set-row">
@@ -366,6 +389,7 @@
                         </div>
                         <div class="mi-set-row"><label>N</label><input type="number" class="text_pole" min="1" max="50" data-mi-setting="modules.diary.every"></div>
                     </div>
+                    <div class="mi-hint">Чтобы дневник появился сразу, выберите «Вместе с ответом бота». При отдельном запросе на выбранном месте сначала появится ожидание, затем готовая запись.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
                             <label>Длина записи</label>
@@ -401,7 +425,7 @@
                 </div>
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.phone.enabled"><span>Включить</span></label>
-                    <div class="mi-hint">Появляется только когда в сцене реально пользуются телефоном. Стиль всегда один — тот, что выбран здесь.</div>
+                    <div class="mi-hint">Появляется прямо в тексте ответа там, где в сцене реально пользуются телефоном. Стиль всегда один — тот, что выбран здесь.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
                             <label>Есть ли телефоны в мире</label>
@@ -433,7 +457,7 @@
                 </div>
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.cards.enabled"><span>Включить</span></label>
-                    <div class="mi-hint">Модель рисует реалистичный «предмет» из сцены: пост, письмо, вывеску, чек, газету… Стиль подстраивается под сеттинг. Карточка изолирована и не ломает тему таверны.</div>
+                    <div class="mi-hint">Пост, письмо, вывеска, чек или газета появляются в тексте ответа рядом с соответствующим событием. Стиль подстраивается под сеттинг. Карточка изолирована и не ломает тему таверны.</div>
                     <div class="mi-set-grid">
                         <div class="mi-set-row">
                             <label>Когда</label>
