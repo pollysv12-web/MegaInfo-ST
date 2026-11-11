@@ -10,12 +10,12 @@
     --mi-card: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
     --mi-line: color-mix(in srgb, var(--SmartThemeBodyColor) 14%, transparent);
     --mi-muted: color-mix(in srgb, var(--SmartThemeBodyColor) 58%, transparent);
-    --mi-up: #6fcf97;
-    --mi-down: #eb7a7a;
-    --mi-warn: #f2b94b;
-    --mi-pos: #ff6b81;
-    --mi-neg: #54a0ff;
-    --mi-radius: 10px;
+    --mi-up: #78c6a5;
+    --mi-down: #df8a84;
+    --mi-warn: #dfb977;
+    --mi-pos: #d8b27a;
+    --mi-neg: #79a5b9;
+    --mi-radius: 12px;
     --mi-blur: 0px;
     --mi-shadow: none;
     --mi-font: inherit;
@@ -31,51 +31,56 @@
 
 /* ---------- темы ---------- */
 .mi-host[data-mi-theme="glass"] {
-    --mi-bg: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+    --mi-accent: color-mix(in srgb, var(--SmartThemeQuoteColor) 40%, #83cbbd);
+    --mi-bg: color-mix(in srgb, var(--SmartThemeBlurTintColor) 76%, transparent);
     --mi-card: color-mix(in srgb, var(--SmartThemeBodyColor) 4%, transparent);
-    --mi-line: color-mix(in srgb, var(--SmartThemeBodyColor) 12%, transparent);
+    --mi-line: color-mix(in srgb, var(--mi-accent) 22%, transparent);
     --mi-blur: 12px;
-    --mi-shadow: 0 4px 18px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .06);
+    --mi-shadow: 0 5px 20px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .05);
     --mi-radius: 14px;
 }
 .mi-host[data-mi-theme="noir"] {
-    --mi-text: #e6e3ee;
-    --mi-accent: #b388ff;
-    --mi-em: #d7c8ff;
-    --mi-bg: #121018ee;
-    --mi-card: #ffffff08;
-    --mi-line: #ffffff1a;
-    --mi-muted: #a49fb3;
-    --mi-shadow: 0 0 0 1px #b388ff22, 0 6px 24px #0008;
+    --mi-text: #e1ebe8;
+    --mi-accent: #8bcdbf;
+    --mi-em: #c2d7cf;
+    --mi-bg: #111d20f2;
+    --mi-card: #d6eeea06;
+    --mi-line: #b1d1c822;
+    --mi-muted: #a0b5af;
+    --mi-shadow: 0 6px 24px #04111355;
     --mi-radius: 12px;
 }
 .mi-host[data-mi-theme="parchment"] {
     --mi-text: #3b2a1a;
-    --mi-accent: #8b3a1e;
-    --mi-em: #5a3b1f;
-    --mi-bg: linear-gradient(180deg, #f3e6c8, #e8d6ad);
-    --mi-card: #fff8e633;
-    --mi-line: #8b5a2b40;
-    --mi-muted: #6d5537;
+    --mi-accent: #456e61;
+    --mi-em: #675537;
+    --mi-bg: linear-gradient(180deg, #f4ecda, #e9dec4);
+    --mi-card: #fffdf555;
+    --mi-line: #8b754638;
+    --mi-muted: #716348;
     --mi-up: #3f7d3a;
     --mi-down: #a3352a;
-    --mi-pos: #b03a48;
-    --mi-neg: #3a5f8f;
-    --mi-shadow: 0 2px 10px #0004;
-    --mi-radius: 6px;
+    --mi-pos: #a16c29;
+    --mi-neg: #4b6b7c;
+    --mi-warn: #896023;
+    --mi-shadow: 0 3px 12px #6d54331a;
+    --mi-radius: 8px;
     --mi-font: Georgia, 'Times New Roman', serif;
 }
 .mi-host[data-mi-theme="pastel"] {
-    --mi-text: #4a4055;
-    --mi-accent: #c86fa6;
-    --mi-em: #7c5a8f;
-    --mi-bg: linear-gradient(135deg, #fdf0f7, #eef3ff);
-    --mi-card: #ffffffaa;
-    --mi-line: #c86fa633;
-    --mi-muted: #8a7f96;
-    --mi-up: #3fa37a;
-    --mi-down: #d0576d;
-    --mi-shadow: 0 4px 16px #c86fa622;
+    --mi-text: #344c47;
+    --mi-accent: #397968;
+    --mi-em: #536b62;
+    --mi-bg: linear-gradient(135deg, #edf6ef, #faf3e8);
+    --mi-card: #ffffffa6;
+    --mi-line: #658e782b;
+    --mi-muted: #647b70;
+    --mi-up: #357a5d;
+    --mi-down: #b7655b;
+    --mi-warn: #92682d;
+    --mi-pos: #b18343;
+    --mi-neg: #648b9f;
+    --mi-shadow: 0 4px 16px #668d7214;
     --mi-radius: 16px;
 }
 .mi-host[data-mi-theme="minimal"] {
@@ -108,9 +113,10 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 10px;
+    padding: 9px 12px;
 }
 .mi-panel:not(.mi-collapsed) > .mi-head { border-bottom: 1px solid var(--mi-line); }
+.mi-host .mi-head { background: color-mix(in srgb, var(--mi-accent) 3%, transparent); }
 .mi-head-main {
     display: flex;
     flex-wrap: wrap;
@@ -128,19 +134,23 @@
     cursor: pointer;
     padding: 4px 6px;
     margin: 0;
-    opacity: .5;
+    opacity: .68;
     border-radius: 6px;
     transition: opacity .15s, background .15s;
 }
 .mi-actions .mi-act:hover { opacity: 1; background: var(--mi-card); }
+.mi-host :is(.mi-tab, .mi-act, summary):focus-visible {
+    outline: 2px solid var(--mi-accent);
+    outline-offset: 2px;
+}
 .mi-link { cursor: pointer; color: var(--mi-accent); opacity: .8; }
 .mi-link:hover { opacity: 1; text-decoration: underline; }
 
 /* ---------- вкладки ---------- */
 .mi-tabs {
     display: flex;
-    gap: 2px;
-    padding: 4px 6px 0;
+    gap: 4px;
+    padding: 7px 8px;
     overflow-x: auto;
     scrollbar-width: none;
     border-bottom: 1px solid var(--mi-line);
@@ -149,17 +159,23 @@
 .mi-tab {
     display: inline-flex;
     align-items: center;
-    padding: 5px 9px;
-    border-radius: 8px 8px 0 0;
+    padding: 5px 10px;
+    min-height: 32px;
+    border-radius: 8px;
     cursor: pointer;
     white-space: nowrap;
     color: var(--mi-muted);
-    border-bottom: 2px solid transparent;
+    border: 1px solid transparent;
     user-select: none;
     transition: color .15s, background .15s;
 }
 .mi-tab:hover { color: var(--mi-text); background: var(--mi-card); }
-.mi-tab.mi-active { color: var(--mi-accent); border-bottom-color: var(--mi-accent); }
+.mi-tab.mi-active {
+    color: var(--mi-accent);
+    background: color-mix(in srgb, var(--mi-accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--mi-accent) 32%, transparent);
+    font-weight: 600;
+}
 .mi-pane { display: none; padding: 8px 10px 10px; }
 .mi-pane.mi-active { display: block; }
 
@@ -168,32 +184,32 @@
 .mi-stack .mi-sec > summary {
     cursor: pointer;
     list-style: none;
-    padding: 6px 10px;
+    padding: 8px 12px;
     color: var(--mi-muted);
     font-weight: 600;
     user-select: none;
 }
 .mi-stack .mi-sec > summary::-webkit-details-marker { display: none; }
-.mi-stack .mi-sec[open] > summary { color: var(--mi-accent); }
+.mi-stack .mi-sec[open] > summary { color: var(--mi-accent); background: color-mix(in srgb, var(--mi-accent) 4%, transparent); }
 .mi-stack .mi-pane { display: block; padding-top: 2px; }
 
 /* ---------- люди ---------- */
 .mi-people {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 8px;
+    gap: 10px;
 }
 .mi-person {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border: 1px solid var(--mi-line);
-    border-radius: calc(var(--mi-radius) - 2px);
+    border-radius: max(0px, calc(var(--mi-radius) - 3px));
     background: var(--mi-card);
     min-width: 0;
 }
-.mi-name { display: flex; align-items: center; gap: 2px; font-weight: 700; color: var(--mi-accent); }
+.mi-name { display: flex; align-items: center; gap: 3px; font-weight: 650; color: var(--mi-accent); }
 .mi-badge {
     margin-left: 6px;
     padding: 0 6px;
@@ -209,10 +225,10 @@
 .mi-stat-val { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mi-bar { display: block; height: 6px; border-radius: 99px; background: var(--mi-line); overflow: hidden; min-width: 40px; }
 .mi-bar-fill { display: block; height: 100%; border-radius: inherit; background: var(--mi-accent); transition: width .4s ease; }
-.mi-stat-food { background: #f2994a; }
-.mi-stat-hygiene { background: #56ccf2; }
-.mi-stat-energy { background: #f2c94c; }
-.mi-stat-arousal { background: #eb5757; }
+.mi-stat-food { background: #7ab995; }
+.mi-stat-hygiene { background: #6eafb9; }
+.mi-stat-energy { background: #d3b16e; }
+.mi-stat-arousal { background: #c78688; }
 .mi-crit .mi-stat-label, .mi-crit .mi-stat-val, .mi-chip.mi-crit { color: var(--mi-warn); }
 .mi-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .mi-chip, .mi-tag {
@@ -225,15 +241,15 @@
     max-width: 100%;
 }
 .mi-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.mi-tag { color: var(--mi-muted); border-radius: 8px; }
+.mi-tag { color: var(--mi-muted); border-radius: 7px; }
 .mi-delta { margin-left: 4px; font-size: .82em; }
 .mi-up { color: var(--mi-up); }
 .mi-down { color: var(--mi-down); }
 .mi-thought {
     padding: 5px 8px;
-    border-left: 2px solid var(--mi-accent);
+    border-left: 2px solid color-mix(in srgb, var(--mi-accent) 65%, transparent);
     border-radius: 0 6px 6px 0;
-    background: color-mix(in srgb, var(--mi-accent) 7%, transparent);
+    background: color-mix(in srgb, var(--mi-accent) 5%, transparent);
     font-style: italic;
     color: var(--mi-em);
 }
@@ -277,7 +293,7 @@
 .mi-slow-ladder { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
 .mi-slow-step { height: 8px; border-radius: 3px; background: var(--mi-line); }
 .mi-slow-step.mi-done { background: color-mix(in srgb, var(--mi-pos) 55%, transparent); }
-.mi-slow-step.mi-now { background: var(--mi-pos); box-shadow: 0 0 8px var(--mi-pos); }
+.mi-slow-step.mi-now { background: var(--mi-pos); box-shadow: 0 0 0 1px color-mix(in srgb, var(--mi-pos) 35%, transparent); }
 .mi-slow-progress { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
 .mi-slow-fill { background: var(--mi-pos); }
 .mi-slow-note { color: var(--mi-muted); font-style: italic; }
@@ -313,13 +329,13 @@
 
 /* ---------- дневник ---------- */
 .mi-diary { display: flex; flex-direction: column; gap: 8px; }
-.mi-diary-head { display: flex; align-items: baseline; gap: 6px; font-weight: 700; }
+.mi-diary-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-weight: 650; padding-bottom: 7px; border-bottom: 1px solid var(--mi-line); }
 .mi-diary-head .mi-muted { margin-left: auto; font-weight: 400; font-size: .9em; }
 .mi-diary-sec { padding: 6px 10px; border-left: 2px solid var(--mi-line); border-radius: 0 6px 6px 0; background: var(--mi-card); }
-.mi-diary-main { border-left-color: #8fb8e6; }
-.mi-diary-user { border-left-color: #f39ab4; }
-.mi-diary-npc { border-left-color: #c7b3e3; }
-.mi-diary-gossip { border-left-color: #e6c48f; }
+.mi-diary-main { border-left-color: var(--mi-accent); }
+.mi-diary-user { border-left-color: var(--mi-pos); }
+.mi-diary-npc { border-left-color: var(--mi-neg); }
+.mi-diary-gossip { border-left-color: var(--mi-warn); }
 .mi-diary-title { font-size: .78em; text-transform: uppercase; letter-spacing: .06em; color: var(--mi-muted); }
 .mi-diary-npc-entry { margin-top: 4px; }
 .mi-diary-npc-entry p { display: inline; margin-left: 4px; }
@@ -402,9 +418,9 @@
 .mi-slot:empty { display: none; }
 .mi-inline { display: block; margin: 14px 0; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
 .mi-inline .mi-phones { padding: 0; }
-.mi-diary-host { margin: 12px 0; border: 1px solid var(--mi-line); border-radius: 10px; background: var(--mi-bg); }
+.mi-diary-host { margin: 12px 0; border: 1px solid var(--mi-line); border-left: 3px solid var(--mi-accent); border-radius: var(--mi-radius); background: var(--mi-bg); }
 .mi-diary-host .mi-diary { padding: 12px; }
-.mi-main-relation { padding: 8px 12px; border-bottom: 1px solid var(--mi-line); }
+.mi-main-relation { padding: 8px 12px; border-bottom: 1px solid var(--mi-line); background: color-mix(in srgb, var(--mi-pos) 4%, transparent); }
 .mi-main-relation .mi-aff { margin: 4px 0 0; }
 .mi-mbti { display: inline-block; max-width: 100%; }
 .mi-mbti > summary { cursor: pointer; color: var(--mi-text); font-size: inherit; }
@@ -414,6 +430,9 @@
 .mi-excitement { font-size: .85em; }
 
 @media (max-width: 760px) {
+    .mi-host .mi-head { padding: 8px 10px; }
+    .mi-host .mi-tab { min-width: 34px; min-height: 36px; justify-content: center; padding: 5px 8px; }
+    .mi-host .mi-actions .mi-act { padding: 7px; }
     .mi-stat { grid-template-columns: 92px 1fr 56px; gap: 6px; }
     .mi-tab-label { display: none; }
     .mi-tab.mi-active .mi-tab-label { display: inline; }
@@ -427,6 +446,18 @@
 
 /* ---------- настройки ---------- */
 .megainfo-settings .mi-set-h { margin: 10px 0 4px; }
+.megainfo-settings .mi-edition-tag {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 2px 7px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeQuoteColor) 30%, transparent);
+    border-radius: 99px;
+    color: color-mix(in srgb, var(--SmartThemeQuoteColor) 45%, var(--SmartThemeBodyColor));
+    font-size: .7em;
+    font-weight: 500;
+    letter-spacing: .02em;
+    vertical-align: middle;
+}
 .megainfo-settings .mi-set-row { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
 .megainfo-settings .mi-set-row > label { font-size: .9em; opacity: .85; }
 .megainfo-settings .mi-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 10px; }

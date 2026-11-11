@@ -1,7 +1,7 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.3.0';
+export const VERSION = '0.3.0-ui.1';
 
 const SETTINGS_VERSION = 3;
 
@@ -15,15 +15,15 @@ export const STAT_DEFS = {
 
 /** Порядок и подписи модулей (используется в настройках, быстром меню и вкладках). */
 export const MODULE_LIST = [
-    { key: 'sims', label: 'Sims', icon: 'fa-heart-pulse' },
-    { key: 'relations', label: 'Отношения', icon: 'fa-people-arrows' },
-    { key: 'slowburn', label: 'Слоуберн', icon: 'fa-hourglass-half' },
-    { key: 'world', label: 'Мир и сюжет', icon: 'fa-earth-europe' },
-    { key: 'location', label: 'Локация', icon: 'fa-map-location-dot' },
-    { key: 'marks', label: 'Следы на теле', icon: 'fa-band-aid' },
-    { key: 'diary', label: 'Дневник', icon: 'fa-book-open' },
-    { key: 'phone', label: 'Телефон', icon: 'fa-mobile-screen' },
-    { key: 'cards', label: 'HTML-карточки', icon: 'fa-wand-magic-sparkles' },
+    { key: 'sims', label: 'Пульс', icon: 'fa-heart-pulse' },
+    { key: 'relations', label: 'Связи', icon: 'fa-people-arrows' },
+    { key: 'slowburn', label: 'Сближение', icon: 'fa-hourglass-half' },
+    { key: 'world', label: 'Сюжет', icon: 'fa-earth-europe' },
+    { key: 'location', label: 'Места', icon: 'fa-map-location-dot' },
+    { key: 'marks', label: 'Следы', icon: 'fa-band-aid' },
+    { key: 'diary', label: 'Заметки', icon: 'fa-book-open' },
+    { key: 'phone', label: 'На связи', icon: 'fa-mobile-screen' },
+    { key: 'cards', label: 'Детали', icon: 'fa-wand-magic-sparkles' },
 ];
 
 export const DEFAULTS = {

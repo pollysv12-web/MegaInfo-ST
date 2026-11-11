@@ -114,7 +114,7 @@ function render(messageId) {
     // Дневник и сюжетные вставки принадлежат ответу и не исчезают из старых сообщений вместе с панелью.
     if (opts.on.diary && (data?.diary || pendingDiary.has(id))) {
         const content = data?.diary ? renderDiary(data.diary, opts)
-            : '<div class="mi-diary mi-muted" role="status"><i class="fa-solid fa-spinner fa-spin"></i> Пишу дневник…</div>';
+            : '<div class="mi-diary mi-muted" role="status"><i class="fa-solid fa-spinner fa-spin"></i> Собираю заметки…</div>';
         const $diary = $('<div class="mi-host mi-diary-host"></div>')
             .attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(content);
         if (s.modules.diary.placement === 'top') $text.before($diary);
