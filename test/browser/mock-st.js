@@ -21,6 +21,18 @@
         outputRegex: null,
         model: null, // function(kind, payload) -> string
     };
+    const saved = sessionStorage.getItem('megainfo-harness-reload');
+    if (saved) {
+        Object.assign(state, JSON.parse(saved));
+        sessionStorage.removeItem('megainfo-harness-reload');
+        document.addEventListener('DOMContentLoaded', () => {
+            state.chat.forEach((_, id) => renderMessage(id));
+        });
+    }
+    window.__persistForReload = () => sessionStorage.setItem('megainfo-harness-reload', JSON.stringify({
+        chat: state.chat, chatMetadata: state.chatMetadata, chatId: state.chatId,
+        extensionSettings: state.extensionSettings, name1: state.name1, name2: state.name2,
+    }));
     window.__st = state;
 
     function format(mes, isUser) {

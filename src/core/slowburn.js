@@ -18,6 +18,26 @@ export const STAGES = [
 
 export const SPEEDS = { glacial: 1, slow: 2, medium: 3, fast: 5 };
 
+// Сила задаёт влияние на повествование, скорость — только предел изменения очков.
+const INFLUENCE = {
+    light: 'LIGHT: use the current stage as a quiet undertone when romance is relevant. A glance or choice of words is enough; ordinary plot and dialogue stay central.',
+    medium: 'MEDIUM: make the current stage perceptible through dialogue, how much is shared, comfortable distance and small choices. Let one fitting cue emerge when relevant; do not repeat a checklist in every reply.',
+    strong: 'STRONG: use the current stage as an active constraint on romantic dialogue, trust, private thoughts and the next meaningful choice. Build attraction through earned specific moments; show hesitation or a change of subject instead of jumping ahead. Still advance the surrounding plot.',
+};
+
+const STAGE_GUIDANCE = [
+    'Keep conversation situational; disclose little, respect personal space and offer practical help without romantic entitlement.',
+    'Remember one concrete detail and ask a small situational question; curiosity is not immediate trust or desire.',
+    'Seek an ordinary reason to talk again and notice habits. Keep personal disclosures modest; do not call curiosity love.',
+    'Use subtext and character-specific humour; attraction can make a reply careful or a glance linger, without forcing contact.',
+    'Let attraction and uncertainty coexist. Restraint may be quiet; do not manufacture cruelty, jealousy or an argument to demonstrate denial.',
+    'Choose proximity or thoughtful practical care, while leaving room for a response. Desire does not imply readiness or consent.',
+    'Let a specific small confidence or accepted help build trust. Vulnerability is voluntary and does not require a traumatic confession.',
+    'A consequential pause or honest half-sentence can carry tension; avoid staging the same interrupted kiss over and over.',
+    'An admission or first kiss becomes possible if the scene supports it and consent is clear. It is a possibility, not an obligation.',
+    'Use familiarity, shared details, open communication and mutual care. An established relationship does not erase personality, boundaries or other goals.',
+];
+
 export function stageIndex(points) {
     let idx = 0;
     for (let i = 0; i < STAGES.length; i++) if (points >= STAGES[i].at) idx = i;
@@ -38,7 +58,15 @@ export function stateLines(state, opts) {
     const next = STAGES[i + 1];
     const lines = [`SLOWBURN ${T} ↔ ${U}: stage ${i + 1}/${STAGES.length} «${st.name}» (${Math.round(points)}/100${next ? `, next stage «${next.name}» at ${next.at}` : ''}).`];
     lines.push(`  Fits now: ${st.now}.`);
-    if (opts.s.modules.slowburn.strict && next) lines.push(`  NOT yet: ${st.not}. ${T} must not skip stages, even if ${U} pushes — resist, deflect or get flustered instead.`);
+    const influence = opts.s.modules.slowburn.influence ?? 'medium';
+    lines.push(`  Narrative influence ${INFLUENCE[influence] ?? INFLUENCE.medium}`);
+    if (influence !== 'light') lines.push(`  At this stage: ${STAGE_GUIDANCE[i]}`);
+    if (opts.s.modules.slowburn.strict && next) lines.push(`  NOT yet: ${st.not}. Keep ${T}'s own choices within this stage even if ${U} initiates something; answer in character without rewriting ${U}'s action or making them feel or do anything.`);
+    if (influence === 'strong') lines.push(`  Before a romantic escalation, check whether ${T}'s trust and the current stage support it. Sexual arousal alone never unlocks a stage. Express limits through natural dialogue and choices, not an OOC explanation or a forced quarrel.`);
+    const agency = opts.s.modules.sims?.userThoughts === true
+        ? `Guide ${T}'s romantic choices; ${U}'s inner narration is allowed only within the user's explicit roleplay permissions. Never assume reciprocal attraction or consent.`
+        : `Guide only ${T}'s behaviour, never decide ${U}'s feelings, thoughts, consent or actions.`;
+    lines.push(`  ${agency} Do not display the scale in dialogue. Intensity is not progress; repeated flirting, routine time passing and every new reply need not add points.`);
     if (sb?.moments?.length) lines.push(`  Key moments so far: ${sb.moments.slice(-4).map((m) => m.text).join('; ')}.`);
     return lines;
 }
@@ -53,6 +81,7 @@ export function rules(state, opts) {
     return [
         `- slowburn.d: how much THIS reply moved the romantic slowburn between ${targetName(opts)} and ${U}: usually 0 or +1; a truly meaningful moment up to +${max}; a quarrel or betrayal −1…−${max}.`,
         '- slowburn.moment: one short phrase if a key moment happened (first touch, saved them, almost kiss…), otherwise "".',
+        '- Progress must be earned by a concrete change in trust or connection in the story, not sexual arousal, a new message or the selected influence strength. Influence controls narration; speed controls the permitted point change. Never invent a milestone to fill this field.',
     ];
 }
 
@@ -60,7 +89,7 @@ export function apply(next, base, data, opts) {
     const cfg = opts.s.modules.slowburn;
     const max = SPEEDS[cfg.speed] ?? 2;
     const prev = base?.slow ?? { points: 0, moments: [], stageUpDate: '' };
-    const sb = { points: prev.points ?? 0, moments: [...(prev.moments ?? [])], stageUpDate: prev.stageUpDate ?? '', diff: 0 };
+    const sb = { points: clamp(toNumber(prev.points, 0), 0, 100), moments: [...(prev.moments ?? [])], stageUpDate: prev.stageUpDate ?? '', diff: 0 };
     const d = clamp(toNumber(data?.slowburn?.d, 0), -max, max);
     const oldStage = stageIndex(sb.points);
     let points = clamp(sb.points + d, 0, 100);
@@ -76,7 +105,7 @@ export function apply(next, base, data, opts) {
     sb.diff = Math.round((points - sb.points) * 10) / 10;
     sb.points = points;
     const moment = str(data?.slowburn?.moment, 140);
-    if (moment) sb.moments.push({ text: moment, date: next.date || '' });
+    if (moment && !sb.moments.some((m) => m.text === moment && m.date === (next.date || ''))) sb.moments.push({ text: moment, date: next.date || '' });
     if (sb.moments.length > 20) sb.moments = sb.moments.slice(-20);
     next.slow = sb;
 }

@@ -12,6 +12,14 @@ import { deepClone, findTagBlock, parseLooseJson, stripTagBlocks } from '../util
 export const TAG = 'megainfo';
 export const CARD_TAG = Extras.CARD_TAG;
 export const OUR_TAGS = [CARD_TAG, TAG];
+/** Места для визуальных блоков в тексте; сами данные по-прежнему хранятся отдельно. */
+export const INLINE_MARKERS = Object.freeze({ phone: '[[mi:phone]]', card: '[[mi:card]]' });
+
+/** Убирает служебные места вставки из истории, которую получает модель. */
+export function stripPlacementMarkers(text) {
+    if (typeof text !== 'string' || !text) return text;
+    return text.replace(/\[\[\s*mi\s*:\s*(?:phone|card)\s*\]\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+}
 /** Теги v0.1 — тоже вырезаем из истории. */
 export const LEGACY_TAGS = ['sims'];
 
@@ -59,7 +67,7 @@ function mergeSchema(state, request, opts) {
     return out;
 }
 
-function mergeRules(state, request, opts, prevDiary) {
+function mergeRules(state, request, opts, prevDiary, separate) {
     const r = [];
     if (needScene(request)) r.push(...People.rules(state, request, opts));
     if (request.has('slowburn')) r.push(...Slow.rules(state, opts));
@@ -67,8 +75,8 @@ function mergeRules(state, request, opts, prevDiary) {
     if (request.has('marks')) r.push(...Marks.rules(state, opts));
     if (request.has('location')) r.push(...Loc.rules(state, opts));
     if (request.has('diary')) r.push(...Extras.diaryRules(opts, prevDiary));
-    if (request.has('phone')) r.push(...Extras.phoneRules(opts));
-    if (request.has('cards')) r.push(...Extras.cardRules(opts));
+    if (request.has('phone')) r.push(...Extras.phoneRules(opts, { separate }));
+    if (request.has('cards')) r.push(...Extras.cardRules(opts, { separate }));
     r.push(`- Keys that are not needed (or did not change, where allowed) may be omitted. All text values in ${opts.language}.`);
     return r;
 }
@@ -87,7 +95,10 @@ export function buildInstruction({ state, request, opts, separate = false, prevD
     if (!request.size) return '';
     const lines = [];
     if (separate) {
-        lines.push(`You are a silent story-state tracker for a roleplay. Read the latest part of the story and reply with ONLY the <${TAG}> block${request.has('cards') ? ` (and the <${CARD_TAG}> card if needed)` : ''} — no story text, no comments.`);
+        const payload = onlyCards ? `the <${CARD_TAG}> card if needed (otherwise an empty reply)` : `the <${TAG}> block${request.has('cards') ? ` and the <${CARD_TAG}> card if needed` : ''}`;
+        lines.push(`You are a silent story-state tracker for a roleplay. Read the latest part of the story and reply with ONLY ${payload} — no story text, no comments, no placement markers. Track events that ALREADY happened in the latest reply; never add phone use, objects, dialogue or other story actions.`);
+    } else if (onlyCards) {
+        lines.push(`[MegaInfo · visual artifacts]\nWrite the story normally. If a card is needed, append its <${CARD_TAG}> payload at the very END of the reply; the system hides the payload and displays the card at its placement marker in the story.`);
     } else if (atStart) {
         lines.push(`[MegaInfo · status tracker]\nStart your reply with the <${TAG}> block describing the state at the END of this reply, then write the story.`);
     } else {
@@ -108,7 +119,7 @@ export function buildInstruction({ state, request, opts, separate = false, prevD
         lines.push('', 'FORMAT:', `<${TAG}>`, JSON.stringify(sch), `</${TAG}>`);
     }
     if (request.has('cards')) lines.push(`<${CARD_TAG}><div>…</div></${CARD_TAG}>  ← optional, see rules`);
-    lines.push('', 'RULES:', ...mergeRules(state, request, opts, prevDiary));
+    lines.push('', 'RULES:', ...mergeRules(state, request, opts, prevDiary, separate));
     return lines.join('\n');
 }
 

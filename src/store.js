@@ -95,6 +95,35 @@ export async function saveChat() {
     await ctx().saveChat();
 }
 
+const markKey = (m) => JSON.stringify([m.id, m.whoId || m.who, m.kind, m.where, m.at]);
+
+/** Ручное удаление не должно отменяться запоздавшим отдельным запросом. */
+export function filterDismissedMarks(state) {
+    if (!state?.marks?.length) return state;
+    const dismissed = new Set(meta()?.dismissedMarks ?? []);
+    if (!dismissed.size) return state;
+    return { ...state, marks: state.marks.filter((m) => !dismissed.has(markKey(m))) };
+}
+
+export function dismissMark(messageId, id) {
+    const message = getMessage(messageId);
+    const mark = getData(message)?.state?.marks?.find((m) => m.id === id);
+    if (!mark) return false;
+    const m = meta();
+    if (m) m.dismissedMarks = [...new Set([...(m.dismissedMarks ?? []), markKey(mark)])];
+    const key = markKey(mark);
+    const remove = (data) => {
+        if (!data?.state?.marks) return;
+        data.state = { ...data.state, marks: data.state.marks.filter((x) => markKey(x) !== key) };
+    };
+    for (const item of ctx().chat.slice(messageId)) {
+        remove(getData(item));
+        for (const swipe of item.swipe_info ?? []) remove(swipe?.extra?.[MODULE]);
+    }
+    saveMeta();
+    return true;
+}
+
 // ---------------------------------------------------------------- метаданные чата (места)
 
 function meta() {

@@ -82,10 +82,10 @@ test('спад статов за время + события; баланс то�
         request: new Set(['sims', 'relations']),
         opts,
     }).state;
-    // 4 часа: food 60-20+50 => 90; energy 50-30 => 20; arousal 10+20 => 30
+    // 4 часа: food 60-20+50 => 90; energy 50-30 => 20; возбуждение не растёт само.
     assert.equal(s2.people['алекс'].stats.food, 90);
     assert.equal(s2.people['алекс'].stats.energy, 20);
-    assert.equal(s2.people['алекс'].stats.arousal, 30);
+    assert.equal(s2.people['алекс'].stats.arousal, 10);
     assert.equal(s2.people['алекс'].diff.food, 30);
     assert.equal(s2.people.user.stats.hygiene, 100);
     assert.equal(s2.people.user.money, 3800);

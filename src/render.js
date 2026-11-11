@@ -13,6 +13,25 @@ const MBTI = {
     ESTJ: 'Менеджер', ESFJ: 'Консул', ENFJ: 'Тренер', ENTJ: 'Командир',
 };
 
+const MBTI_DESCRIPTION = {
+    ISTJ: 'Практичный и последовательный: ценит надёжность, порядок и выполненные обещания; решения принимает по проверенным фактам.',
+    ISFJ: 'Внимательный и заботливый: замечает бытовые нужды близких, поддерживает делом и бережно относится к привычным связям.',
+    INFJ: 'Проницательный и сдержанный: ищет смысл в поступках, тонко чувствует людей и раскрывается в доверительных отношениях.',
+    INTJ: 'Независимый стратег: видит долгосрочные цели, выстраивает планы и предпочитает содержательность внешним условностям.',
+    ISTP: 'Наблюдательный практик: спокойно разбирается в сложных ситуациях, любит самостоятельность и проверяет идеи действием.',
+    ISFP: 'Чуткий и свободолюбивый: выражает себя через поступки и вкус, живёт текущим моментом и уважает личные границы.',
+    INFP: 'Вдумчивый идеалист: опирается на личные ценности, богатое воображение и искренность; чувствителен к внутренним противоречиям.',
+    INTP: 'Любознательный аналитик: исследует идеи, замечает логические несостыковки и ценит свободу размышлять без готовых ответов.',
+    ESTP: 'Энергичный делец: быстро оценивает обстановку, действует по ситуации, любит практические задачи, азарт и живой контакт.',
+    ESFP: 'Открытый и выразительный: легко вовлекается в происходящее, замечает настроение окружающих и оживляет общение.',
+    ENFP: 'Увлечённый исследователь: видит возможности, охотно знакомится с людьми и загорается новыми идеями и значимыми связями.',
+    ENTP: 'Изобретательный собеседник: испытывает идеи спором, быстро находит альтернативы и любит интеллектуальный вызов.',
+    ESTJ: 'Организованный руководитель: берёт ответственность, распределяет задачи и ценит ясные договорённости и ощутимый результат.',
+    ESFJ: 'Общительный и участливый: поддерживает связь между людьми, помнит об общих договорённостях и заботится об атмосфере.',
+    ENFJ: 'Внимательный вдохновитель: замечает потенциал людей, умеет объединять их и стремится к взаимопониманию.',
+    ENTJ: 'Решительный организатор: задаёт направление, мыслит системно и настойчиво превращает замыслы в конкретные действия.',
+};
+
 const icon = (name, cls = 'fa-solid') => `<i class="${cls} ${name}"></i>`;
 const delta = (d) => (d ? `<span class="mi-delta ${d > 0 ? 'mi-up' : 'mi-down'}">${formatSigned(d)}</span>` : '');
 const nl2br = (t) => esc(t).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>');
@@ -21,6 +40,7 @@ const para = (t) => (t ? `<p>${nl2br(t)}</p>` : '');
 // ---------------------------------------------------------------- персонажи (sims)
 
 function statRow(key, value, diff, view, crit) {
+    value = Math.round(value);
     const def = STAT_DEFS[key];
     if (view === 'chips') {
         return `<span class="mi-chip${crit ? ' mi-crit' : ''}" title="${esc(def.label)}">${icon(def.icon)}${value}%${delta(diff)}</span>`;
@@ -48,10 +68,12 @@ function personCard(p, opts, warnings, { showRel = false } = {}) {
     }
     const tags = [];
     if (p.mood) tags.push(`<span class="mi-tag">${icon('fa-masks-theater')}${esc(p.mood)}</span>`);
+    if (Number.isFinite(p.excitement) && p.excitement > 0) tags.push(`<span class="mi-tag mi-excitement" title="Радость, азарт и эмоциональная энергия; отдельно от сексуального возбуждения">${icon('fa-sparkles')}Эмоциональный подъём: ${Math.round(Math.min(100, Math.max(0, p.excitement)))}%</span>`);
     if (p.outfit) tags.push(`<span class="mi-tag">${icon('fa-shirt')}${esc(p.outfit)}</span>`);
     if (tags.length) h += `<div class="mi-tags">${tags.join('')}</div>`;
     if (showRel && typeof p.aff === 'number') h += affBar(p, opts);
-    if (p.thought) h += `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>`;
+    const showUserThought = opts.s.modules.sims.userThoughts && (!opts.on.relations || opts.s.modules.relations.thoughts !== false);
+    if (p.thought && (p.role !== 'user' || showUserThought)) h += `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>`;
     h += '</div>';
     return h;
 }
@@ -66,8 +88,12 @@ function profileSection(state, people, opts) {
             if (pr.zodiac) items.push(`<div>${icon('fa-star')}<span class="mi-k">знак</span>${esc(pr.zodiac)}</div>`);
             if (pr.mbti) {
                 const code = String(pr.mbti).match(/\b([IE][NS][TF][JP])\b/i)?.[1]?.toUpperCase();
-                const desc = String(pr.mbti).replace(/^\s*[IE][NS][TF][JP]\s*[-–—:]?\s*/i, '') || (code ? MBTI[code] : '');
-                items.push(`<div>${icon('fa-brain')}<span class="mi-k">MBTI</span><span title="${esc(desc)}">${esc(code ?? pr.mbti)}</span>${desc && code ? `<span class="mi-muted"> · ${esc(desc)}</span>` : ''}</div>`);
+                if (code) {
+                    const desc = MBTI_DESCRIPTION[code];
+                    items.push(`<details class="mi-mbti"><summary title="${esc(desc)}">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>${esc(code)} · ${esc(MBTI[code])}</span></summary><p class="mi-mbti-description">${esc(desc)}</p></details>`);
+                } else {
+                    items.push(`<div>${icon('fa-brain')}<span class="mi-k">MBTI</span>${esc(pr.mbti)}</div>`);
+                }
             }
         }
         if (cfg.showMoney && p.money !== null && p.money !== undefined) {
@@ -102,10 +128,11 @@ function relationsPane(state, opts) {
     const people = People.sortPeople(Object.values(state.people ?? {}).filter((p) => p.role !== 'user' && typeof p.aff === 'number'));
     if (!people.length) return '';
     const simsShowsThoughts = opts.on.sims && opts.s.modules.sims.variant !== 'lite';
-    const inScene = people.filter((p) => scene.has(p.id));
-    const away = people.filter((p) => !scene.has(p.id));
+    // Основная пара всегда выше NPC, даже если персонаж временно вне сцены.
+    const inScene = people.filter((p) => p.role === 'char' || scene.has(p.id));
+    const away = people.filter((p) => p.role !== 'char' && !scene.has(p.id));
     const card = (p) => `<div class="mi-person mi-rel-card">`
-        + `<div class="mi-name">${icon(p.role === 'npc' ? 'fa-user-group' : 'fa-user-tie')}<span>${esc(p.name)}</span>${scene.has(p.id) ? '' : '<span class="mi-badge">не в сцене</span>'}</div>`
+        + `<div class="mi-name">${icon(p.role === 'npc' ? 'fa-user-group' : 'fa-user-tie')}<span>${esc(p.name)} ↔ ${esc(opts.userName || 'User')}</span>${scene.has(p.id) ? '' : '<span class="mi-badge">не в сцене</span>'}</div>`
         + (!simsShowsThoughts && p.outfit && scene.has(p.id) ? `<div class="mi-tags"><span class="mi-tag">${icon('fa-shirt')}${esc(p.outfit)}</span></div>` : '')
         + affBar(p, opts)
         + (!simsShowsThoughts && p.thought && scene.has(p.id) ? `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>` : '')
@@ -196,7 +223,7 @@ function placePane(state, opts, data) {
 // ---------------------------------------------------------------- следы на теле
 
 function bodyPane(state, opts) {
-    const marks = (state.marks ?? []).map((m) => ({ m, st: Marks.markStatus(m, state, opts) })).filter((x) => x.st.permanent || x.st.progress < 1);
+    const marks = (state.marks ?? []).filter((m) => Marks.isTracked(m, opts)).map((m) => ({ m, st: Marks.markStatus(m, state, opts) })).filter((x) => x.st.permanent || x.st.progress < 1);
     if (!marks.length) return '';
     const groups = new Map();
     for (const x of marks) {
@@ -210,8 +237,11 @@ function bodyPane(state, opts) {
         for (const { m, st } of list) {
             const def = Marks.KINDS[m.kind] ?? Marks.KINDS.other;
             const left = st.permanent ? st.stage : `${st.stage} · ещё ~${formatDuration(st.left)}`;
-            h += `<li class="mi-mark mi-sev-${m.sev}">${icon(def.icon)}<span class="mi-mark-main"><b>${esc(def.label)}</b> — ${esc(m.where)}${m.note ? ` <span class="mi-muted">(${esc(m.note)})</span>` : ''}</span>`
-                + `<span class="mi-mark-meta"><span class="mi-sev" title="тяжесть ${m.sev}/3">${'●'.repeat(m.sev)}${'○'.repeat(3 - m.sev)}</span> ${esc(left)}</span>`
+            const sev = Math.min(3, Math.max(1, Math.round(Number(m.sev) || 1)));
+            const removeTitle = `Убрать след: ${def.label}, ${m.where}`;
+            h += `<li class="mi-mark mi-sev-${sev}">${icon(def.icon)}<span class="mi-mark-main"><b>${esc(def.label)}</b> — ${esc(m.where)}${m.note ? ` <span class="mi-muted">(${esc(m.note)})</span>` : ''}</span>`
+                + `<button type="button" class="mi-act mi-mark-remove" data-mi-act="remove-mark" data-mi-mark="${esc(m.id)}" title="${esc(removeTitle)}" aria-label="${esc(removeTitle)}">${icon('fa-xmark')}</button>`
+                + `<span class="mi-mark-meta"><span class="mi-sev" title="тяжесть ${sev}/3">${'●'.repeat(sev)}${'○'.repeat(3 - sev)}</span> ${esc(left)}</span>`
                 + (st.permanent ? '' : `<span class="mi-bar mi-heal"><span class="mi-bar-fill" style="width:${Math.round((1 - st.progress) * 100)}%"></span></span>`)
                 + '</li>';
         }
@@ -223,7 +253,7 @@ function bodyPane(state, opts) {
 
 // ---------------------------------------------------------------- дневник
 
-function diaryPane(diary, opts) {
+export function renderDiary(diary, opts) {
     if (!diary) return '';
     const cfg = opts.s.modules.diary;
     let h = '<div class="mi-diary">';
@@ -283,7 +313,7 @@ function phoneBlock(p, opts, state) {
     return h;
 }
 
-function phonePane(phone, opts, state) {
+export function renderPhone(phone, opts, state) {
     if (!phone?.length) return '';
     return `<div class="mi-phones">${phone.map((p) => phoneBlock(p, opts, state)).join('')}</div>`;
 }
@@ -333,9 +363,6 @@ function buildTabs(data, opts) {
             if (html) tabs.push({ key: 'body', label: 'Тело', icon: 'fa-band-aid', html });
         }
     }
-    if (opts.on.diary && data?.diary) tabs.push({ key: 'diary', label: 'Дневник', icon: 'fa-book-open', html: diaryPane(data.diary, opts) });
-    if (opts.on.phone && data?.phone) tabs.push({ key: 'phone', label: 'Телефон', icon: 'fa-mobile-screen', html: phonePane(data.phone, opts, state) });
-    if (opts.on.cards && data?.card) tabs.push({ key: 'card', label: 'Карточка', icon: 'fa-wand-magic-sparkles', html: '<div class="mi-card-host" data-mi-card="1"></div>' });
     return tabs;
 }
 
@@ -388,6 +415,10 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
 
     let h = `<div class="mi-panel${collapsed ? ' mi-collapsed' : ''} mi-layout-${esc(s.layout)}">`;
     h += header(state, { pending, actions });
+    if (!collapsed && opts.on.relations && state) {
+        const main = People.sortPeople(Object.values(state.people ?? {})).find((p) => p.role === 'char' && typeof p.aff === 'number');
+        if (main) h += `<div class="mi-main-relation"><div class="mi-name">${icon('fa-heart')}<span>${esc(main.name)} ↔ ${esc(opts.userName || 'User')}</span></div>${affBar(main, opts)}</div>`;
+    }
     if (err && !pending) {
         h += `<div class="mi-error">${icon('fa-triangle-exclamation')}<span>Блок не распознан: ${esc(err.text)}</span>`
             + '<span class="menu_button mi-act" data-mi-act="regen">Повторить</span></div>';
