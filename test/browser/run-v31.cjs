@@ -43,7 +43,7 @@ const server = http.createServer((request, response) => {
         await page.goto(`http://127.0.0.1:${server.address().port}/`);
         await page.waitForFunction(() => typeof megaInfoInterceptor === 'function' && document.querySelector('#megainfo_preset_apply'));
         await page.addStyleTag({ content: '#layout{grid-template-columns:minmax(0,1fr) 380px}.text_pole{box-sizing:border-box;max-width:100%}' });
-        check('release badge is 0.3.1', (await page.locator('.mi-edition-tag').textContent()).trim() === '0.3.1');
+        check('release badge matches manifest', (await page.locator('.mi-edition-tag').textContent()).trim() === require('../../manifest.json').version);
 
         await page.locator('[data-mi-config-tab="presets"]').click();
         check('settings tab navigation activates only the selected pane', await page.locator('[data-mi-config-panel="presets"]').isVisible() && !await page.locator('[data-mi-config-panel="people"]').isVisible());
@@ -125,7 +125,8 @@ const server = http.createServer((request, response) => {
         await page.waitForFunction(id => window.__st.chat[id].extra.megainfo.state.people['алекс'].outfit === 'Красное пальто', id);
         check('clothing pencil updates the rendered field', /Красное пальто/.test(await page.locator(main).textContent()));
         await page.evaluate(() => window.__popupQueue.push({ value: '1234' }));
-        await page.locator(`${main} [data-mi-act="edit-field"][data-mi-field="money"]`).click();
+        await page.locator(`${message} [data-mi-sec="profile"] > summary`).click();
+        await page.locator(`${message} [data-mi-pane="chars"] [data-mi-act="edit-field"][data-mi-person="алекс"][data-mi-field="money"]`).click();
         await page.waitForFunction(id => window.__st.chat[id].extra.megainfo.state.people['алекс'].money === 1234, id);
         check('money pencil edits the balance', await page.evaluate(id => window.__st.chat[id].extra.megainfo.state.people['алекс'].money === 1234, id));
 

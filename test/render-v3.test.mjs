@@ -60,11 +60,12 @@ test('MBTI показывает короткий тип, описание дос
     assert.doesNotMatch(html, /модель добавила очень длинный текст/);
 });
 
-test('главная пара выше вкладок и NPC, даже когда бот временно вне сцены', () => {
+test('главная пара первая во вкладке отношений без закрепления над панелью', () => {
     const st = state();
     st.scene = ['user', 'npc'];
     const html = panel(st, makeOpts());
-    assert.ok(html.indexOf('mi-main-relation') < html.indexOf('mi-tabs'));
+    assert.doesNotMatch(html, /class="mi-main-relation"/);
+    assert.match(html, /data-mi-tab="rel"/);
     const relations = html.slice(html.indexOf('data-mi-pane="rel"'));
     assert.ok(relations.indexOf('Кристофер ↔ Игрок') < relations.indexOf('Друг ↔ Игрок'));
 });

@@ -132,28 +132,25 @@ function personCard(p, opts, warnings, { showRel = false, editable = true, state
     if (fields.stats) h += pulseSection(p, 'excitement', 'Эмоциональное возбуждение', statRow(p, 'excitement', p.excitement ?? 0, p.excitementDiff, view, false, opts, state, editable), opts);
     if (fields.mood && (p.mood || editable)) h += pulseSection(p, 'mood', 'Настроение', textField(p, 'mood', 'Настроение', 'fa-masks-theater', p.mood, opts, editable), opts);
     if (fields.outfit && (p.outfit || editable)) h += pulseSection(p, 'outfit', 'Одежда', textField(p, 'outfit', 'Одежда', 'fa-shirt', p.outfit, opts, editable), opts);
-    if (fields.money && opts.s.modules.sims.showMoney) h += pulseSection(p, 'money', 'Деньги', moneyField(p, opts, state, editable), opts);
+    // В «Пульсе» баланс находится в «Общей информации». В отдельной
+    // краткой карточке NPC сохраняем показ выбранных для него сведений.
+    if (!editable && fields.money && opts.s.modules.sims.showMoney) h += pulseSection(p, 'money', 'Деньги', moneyField(p, opts, state, false), opts);
     if (showRel && fields.relations && typeof p.aff === 'number') h += affBar(p, opts);
     const showUserThought = opts.s.modules.sims.userThoughts && (!opts.on.relations || opts.s.modules.relations.thoughts !== false);
     if (fields.thought && (p.thought || editable) && (p.role !== 'user' || showUserThought)) h += pulseSection(p, 'thought', 'Мысли', textField(p, 'thought', 'Мысли', 'fa-comment-dots', p.thought, opts, editable, { thought: true }), opts);
-    if (opts.on.pocket && fields.pocket && state) {
-        const items = state.pockets?.[p.id] ?? [];
-        const text = items.length ? items.map((x) => x.name).join(' · ') : 'Пока пусто';
-        const summary = `<div class="mi-pocket-summary">${icon('fa-bag-shopping')}<span><b>Кармашек:</b> ${esc(text)}</span></div>`;
-        h += pulseSection(p, 'pocket', 'Кармашек', summary, opts);
-    }
     h += '</div>';
     return h;
 }
 
 function profileSection(state, people, opts) {
     const cfg = opts.s.modules.sims;
+    const profileMode = pulseMode(opts, 'profile', 'collapse');
     const rows = people.map((p) => {
         const tracked = trackingFor(p, opts.s);
-        if (tracked.detail === 'off' || !tracked.fields.profile) return '';
+        if (tracked.detail === 'off') return '';
         const pr = p.profile ?? {};
         const items = [];
-        if (cfg.showProfile) {
+        if (cfg.showProfile && tracked.fields.profile && profileMode !== 'hide') {
             items.push(`<div class="mi-profile-line">${icon('fa-cake-candles')}<span class="mi-k">д/р</span><span>${esc(pr.birthday || 'Не указано')}</span>${editButton(p, 'profile.birthday', 'День рождения', opts)}</div>`);
             items.push(`<div class="mi-profile-line">${icon('fa-star')}<span class="mi-k">знак</span><span>${esc(pr.zodiac || 'Не указано')}</span>${editButton(p, 'profile.zodiac', 'Знак зодиака', opts)}</div>`);
             if (pr.mbti) {
@@ -166,6 +163,10 @@ function profileSection(state, people, opts) {
                 }
             }
             if (!pr.mbti) items.push(`<div class="mi-profile-line">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>Не указано</span>${editButton(p, 'profile.mbti', 'MBTI', opts)}</div>`);
+        }
+        if (cfg.showMoney && tracked.fields.money) {
+            const money = pulseSection(p, 'money', 'Деньги', moneyField(p, opts, state, true), opts);
+            if (money) items.push(money);
         }
         if (!items.length) return '';
         return `<div class="mi-profile"><div class="mi-profile-name">${esc(p.name)}</div>${items.join('')}</div>`;
@@ -180,10 +181,10 @@ function profileSection(state, people, opts) {
         if (visible.length) tx = '<div class="mi-tx">' + visible.map((t) => `<span class="mi-tx-item ${t.amount > 0 ? 'mi-up' : 'mi-down'}">${esc(formatMoney(t.amount, cfg.currency))}${t.note ? ' · ' + esc(t.note) : ''}<span class="mi-tx-who">${esc(t.who)}</span></span>`).join('') + '</div>';
     }
     if (!rows.length && !tx) return '';
-    const mode = pulseMode(opts, 'profile', 'collapse');
-    if (mode === 'hide') return '';
     const body = `<div class="mi-profiles">${rows.join('')}</div>${tx}`;
-    return mode === 'collapse' ? `<details class="mi-more" data-mi-sec="profile"><summary>${icon('fa-circle-info')}Общая информация</summary>${body}</details>` : `<section class="mi-pulse-profile"><div class="mi-sub">${icon('fa-circle-info')}Общая информация</div>${body}</section>`;
+    // Скрытие профиля не скрывает независимо выбранные деньги. Они остаются
+    // внутри компактной «Общей информации», а не возвращаются в карточку Пульса.
+    return profileMode !== 'show' ? `<details class="mi-more" data-mi-sec="profile"><summary>${icon('fa-circle-info')}Общая информация</summary>${body}</details>` : `<section class="mi-pulse-profile"><div class="mi-sub">${icon('fa-circle-info')}Общая информация</div>${body}</section>`;
 }
 
 // ---------------------------------------------------------------- отношения
@@ -336,8 +337,9 @@ function bodyPane(state, opts) {
 export function renderDiary(diary, opts) {
     if (!diary) return '';
     const cfg = opts.s.modules.diary;
-    let h = '<div class="mi-diary">';
-    h += `<div class="mi-diary-head">${icon('fa-book-open')}<span>${esc(diary.title || 'Заметки')}</span><span class="mi-muted">${esc(diary.date)}</span></div>`;
+    const title = String(diary.title ?? '').trim();
+    let h = '<details class="mi-diary" data-mi-sec="diary" open>';
+    h += `<summary class="mi-diary-head">${icon('fa-book-open')}<span>Заметки</span>${title && title !== 'Заметки' ? `<span class="mi-diary-entry-title">${esc(title)}</span>` : ''}<span class="mi-muted">${esc(diary.date)}</span><i class="fa-solid fa-chevron-down mi-diary-chevron" aria-hidden="true"></i></summary><div class="mi-diary-body">`;
     h += `<div class="mi-diary-sec mi-diary-main"><div class="mi-diary-title">${icon('fa-pen-nib')}Личное</div>${para(diary.entry)}</div>`;
     if (cfg.aboutUser && diary.aboutUser) {
         h += `<div class="mi-diary-sec mi-diary-user"><div class="mi-diary-title">${icon('fa-heart')}${esc(Extras.diaryAboutTitle(opts.pronoun))}</div>${para(diary.aboutUser)}</div>`;
@@ -351,7 +353,7 @@ export function renderDiary(diary, opts) {
     }
     h += '<div class="mi-diary-actions"><span class="mi-act mi-link" data-mi-act="diary" title="Написать запись заново">'
         + `${icon('fa-rotate')}переписать</span></div>`;
-    h += '</div>';
+    h += '</div></details>';
     return h;
 }
 
@@ -526,10 +528,6 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
 
     let h = `<div class="mi-panel${collapsed ? ' mi-collapsed' : ''} mi-layout-${esc(s.layout)}">`;
     h += header(state, { pending, actions });
-    if (!collapsed && opts.on.relations && state) {
-        const main = People.sortPeople(Object.values(state.people ?? {})).find((p) => p.role === 'char' && typeof p.aff === 'number' && trackingFor(p, opts.s).detail !== 'off' && trackingFor(p, opts.s).fields.relations);
-        if (main) h += `<div class="mi-main-relation"><div class="mi-name">${icon('fa-heart')}<span>${esc(main.name)} ↔ ${esc(opts.userName || 'User')}</span></div>${affBar(main, opts)}</div>`;
-    }
     if (err && !pending) {
         h += `<div class="mi-error">${icon('fa-triangle-exclamation')}<span>Блок не распознан: ${esc(err.text)}</span>`
             + '<span class="menu_button mi-act" data-mi-act="regen">Повторить</span></div>';

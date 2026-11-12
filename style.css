@@ -4,7 +4,7 @@
 
 .mi-host {
     --mi-text: var(--SmartThemeBodyColor);
-    --mi-accent: #f2a4bb;
+    --mi-accent: var(--SmartThemeQuoteColor, var(--SmartThemeEmColor, currentColor));
     --mi-em: var(--SmartThemeEmColor, var(--SmartThemeBodyColor));
     --mi-bg: color-mix(in srgb, var(--SmartThemeBlurTintColor) 85%, transparent);
     --mi-card: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
@@ -13,7 +13,7 @@
     --mi-up: #78c6a5;
     --mi-down: #df8a84;
     --mi-warn: #ee99a8;
-    --mi-pos: #ed7ca2;
+    --mi-pos: var(--mi-accent);
     --mi-neg: #79a5b9;
     --mi-radius: 12px;
     --mi-blur: 0px;
@@ -31,7 +31,6 @@
 
 /* ---------- темы ---------- */
 .mi-host[data-mi-theme="glass"] {
-    --mi-accent: #f1abc2;
     --mi-bg: color-mix(in srgb, var(--SmartThemeBlurTintColor) 76%, transparent);
     --mi-card: color-mix(in srgb, var(--SmartThemeBodyColor) 4%, transparent);
     --mi-line: color-mix(in srgb, var(--mi-accent) 22%, transparent);
@@ -40,30 +39,30 @@
     --mi-radius: 14px;
 }
 .mi-host[data-mi-theme="noir"] {
-    --mi-text: #f4e3e9;
-    --mi-accent: #efa2be;
-    --mi-em: #e7c2d0;
-    --mi-bg: #21141df2;
-    --mi-card: #f5d6e508;
-    --mi-line: #e3aac52c;
-    --mi-muted: #c6a4b5;
-    --mi-shadow: 0 6px 24px #19051055;
+    --mi-text: #e6e3ee;
+    --mi-accent: #b388ff;
+    --mi-em: #d7c8ff;
+    --mi-bg: #121018ee;
+    --mi-card: #ffffff08;
+    --mi-line: #ffffff1a;
+    --mi-muted: #a49fb3;
+    --mi-shadow: 0 0 0 1px #b388ff22, 0 6px 24px #0008;
     --mi-radius: 12px;
 }
 .mi-host[data-mi-theme="parchment"] {
-    --mi-text: #492e3b;
-    --mi-accent: #a34167;
-    --mi-em: #714355;
-    --mi-bg: linear-gradient(180deg, #fff1f0, #efdddd);
-    --mi-card: #fffafa88;
-    --mi-line: #9a526e38;
-    --mi-muted: #80586a;
+    --mi-text: #3b2a1a;
+    --mi-accent: #8b3a1e;
+    --mi-em: #5a3b1f;
+    --mi-bg: linear-gradient(180deg, #f3e6c8, #e8d6ad);
+    --mi-card: #fff8e633;
+    --mi-line: #8b5a2b40;
+    --mi-muted: #6d5537;
     --mi-up: #3f7d3a;
     --mi-down: #a3352a;
-    --mi-pos: #b44470;
-    --mi-neg: #4b6b7c;
+    --mi-pos: var(--mi-accent);
+    --mi-neg: #3a5f8f;
     --mi-warn: #a23e55;
-    --mi-shadow: 0 3px 12px #6d54331a;
+    --mi-shadow: 0 2px 10px #0004;
     --mi-radius: 8px;
     --mi-font: Georgia, 'Times New Roman', serif;
 }
@@ -332,6 +331,24 @@
 .mi-diary { display: flex; flex-direction: column; gap: 8px; }
 .mi-diary-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-weight: 650; padding-bottom: 7px; border-bottom: 1px solid var(--mi-line); }
 .mi-diary-head .mi-muted { margin-left: auto; font-weight: 400; font-size: .9em; }
+details.mi-diary { display: block; }
+details.mi-diary > .mi-diary-head {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    min-height: 40px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--mi-accent) 5%, transparent);
+}
+details.mi-diary > .mi-diary-head::-webkit-details-marker { display: none; }
+details.mi-diary > .mi-diary-head:hover { background: color-mix(in srgb, var(--mi-accent) 11%, transparent); }
+details.mi-diary > .mi-diary-head:focus-visible { outline: 2px solid var(--mi-accent); outline-offset: 2px; }
+details.mi-diary:not([open]) > .mi-diary-head { border-bottom: none; }
+details.mi-diary .mi-diary-chevron { margin-right: 0; flex-shrink: 0; transition: transform .15s; }
+details.mi-diary[open] .mi-diary-chevron { transform: rotate(180deg); }
+.mi-diary-body { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
 .mi-diary-sec { padding: 6px 10px; border-left: 2px solid var(--mi-line); border-radius: 0 6px 6px 0; background: var(--mi-card); }
 .mi-diary-main { border-left-color: var(--mi-accent); }
 .mi-diary-user { border-left-color: var(--mi-pos); }
@@ -445,15 +462,21 @@
     .mi-people { grid-template-columns: 1fr; }
 }
 
-/* ---------- настройки ---------- */
+/* ---------- настройки: собственный фиолетовый акцент, отдельно от темы чата ---------- */
+.megainfo-settings {
+    --mi-settings-accent: #b8a0ee;
+    --mi-settings-ink: #261a3b;
+    --mi-settings-line: color-mix(in srgb, var(--mi-settings-accent) 32%, transparent);
+}
+
 .megainfo-settings .mi-set-h { margin: 10px 0 4px; }
 .megainfo-settings .mi-edition-tag {
     display: inline-block;
     margin-left: 7px;
     padding: 2px 7px;
-    border: 1px solid #f2a4bb55;
+    border: 1px solid var(--mi-settings-line);
     border-radius: 99px;
-    color: color-mix(in srgb, #f2a4bb 65%, var(--SmartThemeBodyColor));
+    color: color-mix(in srgb, var(--mi-settings-accent) 72%, var(--SmartThemeBodyColor));
     font-size: .7em;
     font-weight: 500;
     letter-spacing: .02em;
@@ -595,14 +618,55 @@
 
 /* ---------- компактные настройки вида ---------- */
 .megainfo-settings .mi-ui-tabs, .megainfo-settings .mi-ui-subtabs { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
-.megainfo-settings .mi-ui-tabs { padding: 4px; border: 1px solid #f2a4bb33; border-radius: 12px; background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent); }
+.megainfo-settings .mi-ui-tabs { padding: 4px; border: 1px solid var(--mi-settings-line); border-radius: 12px; background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent); }
 .megainfo-settings .mi-ui-tab, .megainfo-settings .mi-ui-subtab { border: 1px solid transparent; padding: 7px 9px; border-radius: 8px; color: var(--SmartThemeBodyColor); background: transparent; cursor: pointer; min-height: 36px; margin: 0; font: inherit; font-size: .9em; }
 .megainfo-settings .mi-ui-tab { flex: 1 1 auto; }
 .megainfo-settings .mi-ui-subtab { border-radius: 99px; border-color: color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent); }
-.megainfo-settings .mi-ui-tab[aria-selected="true"] { color: #311722; background: #f4b0c5; font-weight: 650; }
-.megainfo-settings .mi-ui-subtab[aria-selected="true"] { border-color: #f4b0c5; color: #f4b0c5; background: #f4b0c511; }
-.megainfo-settings .mi-ui-tab:focus-visible, .megainfo-settings .mi-ui-subtab:focus-visible { outline: 2px solid #f4b0c5; outline-offset: 2px; }
+.megainfo-settings .mi-ui-tab[aria-selected="true"] { color: var(--mi-settings-ink); background: var(--mi-settings-accent); font-weight: 650; }
+.megainfo-settings .mi-ui-subtab[aria-selected="true"] { border-color: var(--mi-settings-accent); color: var(--mi-settings-accent); background: color-mix(in srgb, var(--mi-settings-accent) 9%, transparent); }
+.megainfo-settings .mi-ui-tab:focus-visible, .megainfo-settings .mi-ui-subtab:focus-visible { outline: 2px solid var(--mi-settings-accent); outline-offset: 2px; }
 .megainfo-settings .mi-ui-pane[hidden] { display: none !important; }
+.megainfo-settings .mi-more > summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--mi-settings-line);
+    border-radius: 8px;
+    color: var(--SmartThemeBodyColor);
+    background: color-mix(in srgb, var(--mi-settings-accent) 7%, transparent);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.megainfo-settings .mi-more > summary::after {
+    content: '›';
+    margin-left: auto;
+    color: var(--mi-settings-accent);
+    font-size: 1.45em;
+    line-height: 1;
+    transition: transform .15s;
+}
+.megainfo-settings .mi-more[open] > summary::after { transform: rotate(90deg); }
+.megainfo-settings .mi-more > summary:hover,
+.megainfo-settings .mi-more[open] > summary {
+    border-color: var(--mi-settings-accent);
+    background: color-mix(in srgb, var(--mi-settings-accent) 14%, transparent);
+}
+.megainfo-settings .mi-more > summary:focus-visible {
+    outline: 2px solid var(--mi-settings-accent);
+    outline-offset: 2px;
+}
+.megainfo-settings .mi-settings-disclosure > summary > i { color: var(--mi-settings-accent); }
+.megainfo-settings .mi-disclosure-state { margin-left: auto; color: var(--mi-settings-accent); font-size: .78em; }
+.megainfo-settings .mi-disclosure-state::before { content: 'Открыть'; }
+.megainfo-settings .mi-settings-disclosure[open] .mi-disclosure-state::before { content: 'Свернуть'; }
+.megainfo-settings .mi-settings-disclosure > summary::after { margin-left: 2px; }
+.megainfo-settings .mi-settings-disclosure > summary::-webkit-details-marker { display: none; }
+.megainfo-settings .mi-settings-disclosure > .mi-hint,
+.megainfo-settings .mi-settings-disclosure > textarea { margin-top: 8px; }
+
 .megainfo-settings .mi-setting-card, .megainfo-settings .mi-preset-card { padding: 10px; margin: 6px 0; border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent); }
 .megainfo-settings .mi-config-description { font-size: .88em; opacity: .8; line-height: 1.45; margin: 5px 0 8px; }
 .megainfo-settings .mi-order-list { display: flex; flex-direction: column; gap: 4px; }

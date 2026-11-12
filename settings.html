@@ -1,7 +1,7 @@
 <div class="megainfo-settings">
     <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
-            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">0.3.1</span></b>
+            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">0.3.2</span></b>
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
@@ -50,7 +50,7 @@
                             <div class="mi-set-row"><label>Контраст</label><select class="text_pole" data-mi-setting="display.contrast"><option value="normal">Обычный</option><option value="high">Высокий</option><option value="soft">Мягкий</option></select></div>
                         </div>
                         <div class="mi-set-grid" id="megainfo_custom_colors"><div class="mi-set-row"><label>Акцент</label><input type="color" data-mi-setting="custom.accent"></div><div class="mi-set-row"><label>Фон</label><input type="color" data-mi-setting="custom.bg"></div><div class="mi-set-row"><label>Текст</label><input type="color" data-mi-setting="custom.text"></div></div>
-                        <details class="mi-more"><summary>Свой CSS</summary><textarea class="text_pole" rows="3" data-mi-setting="customCss" placeholder=".mi-host { --mi-accent: #ed91ad; }"></textarea></details>
+                        <details class="mi-more mi-settings-disclosure" id="megainfo_custom_css_section"><summary><i class="fa-solid fa-code" aria-hidden="true"></i><span>Свой CSS</span><span class="mi-disclosure-state" aria-hidden="true"></span></summary><textarea class="text_pole" rows="3" data-mi-setting="customCss" placeholder=".mi-host { --mi-accent: #8cbdca; }"></textarea></details>
                     </div>
                 </section>
                 <section class="mi-ui-pane mi-setting-card" data-mi-config-panel="people" role="tabpanel" hidden>
@@ -63,7 +63,7 @@
                     </div>
                     <div class="mi-set-row"><label>Закреплённый важный NPC (подробно)</label><input class="text_pole" type="text" list="megainfo_known_people" maxlength="100" data-mi-setting="tracking.pinnedNpc" placeholder="Имя NPC"></div>
                     <datalist id="megainfo_known_people"></datalist>
-                    <details class="mi-more"><summary>Сведения для отдельного персонажа</summary>
+                    <details class="mi-more mi-settings-disclosure" id="megainfo_person_fields_section"><summary><i class="fa-solid fa-user-gear" aria-hidden="true"></i><span>Сведения для отдельного персонажа</span><span class="mi-disclosure-state" aria-hidden="true"></span></summary>
                         <div class="mi-hint">Выберите знакомое имя или введите своё. Индивидуальные настройки имеют приоритет над настройками роли и закреплением.</div>
                         <div class="mi-set-row"><label>Имя</label><input class="text_pole" type="text" list="megainfo_known_people" maxlength="100" id="megainfo_tracking_name" placeholder="Бот, пользователь или NPC"></div>
                         <div class="mi-set-row"><label>Подробность</label><select class="text_pole" id="megainfo_tracking_detail"><option value="inherit">Как для роли</option><option value="full">Подробно</option><option value="short">Кратко</option><option value="off">Не вести</option></select></div>
