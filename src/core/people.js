@@ -3,6 +3,8 @@
 // а все числа считает код. Поэтому статы не скачут, деньги сходятся, симпатия меняется плавно.
 
 import { STAT_DEFS } from '../settings.js';
+import { trackingFor, trackingRules } from '../tracking.js';
+import { eventReason, recordChange } from './changes.js';
 import {
     clamp, deepClone, formatMoney, normName, parseDateTime, str, toNumber, weekday,
 } from '../util.js';
@@ -10,7 +12,7 @@ import {
 const MAX_DECAY_MINUTES = 7 * 24 * 60;
 export const DEFAULT_STAT = { food: 70, hygiene: 80, energy: 70, arousal: 10 };
 
-const STAT_NAMES = { food: 'сытость', hygiene: 'гигиена', energy: 'бодрость', arousal: 'возбуждение' };
+const STAT_NAMES = { food: 'сытость', hygiene: 'гигиена', energy: 'бодрость', arousal: 'страсть (сексуальное возбуждение)' };
 const WARNINGS = {
     food: 'сильный голод: рассеянность, урчание живота или поиск еды могут быть заметны',
     hygiene: 'гигиена ниже 25: запах, несвежая кожа или одежда могут быть заметны вблизи',
@@ -32,6 +34,7 @@ export function scenePeople(state) {
 
 const simsFull = (opts) => opts.on.sims && opts.s.modules.sims.variant !== 'lite';
 const withStats = (opts) => simsFull(opts) && opts.stats.length > 0;
+const withEmotions = (opts) => simsFull(opts) && opts.s.modules.sims.excitement !== false;
 const userThoughts = (opts) => opts.s.modules.sims.userThoughts === true
     && (!opts.on.relations || opts.s.modules.relations.thoughts !== false);
 
@@ -81,6 +84,8 @@ export function birthdayLines(state, opts) {
     const lines = [];
     for (const p of Object.values(state.people ?? {})) {
         if (p.role !== 'char' && p.role !== 'user') continue;
+        const tracking = trackingFor(p, opts.s);
+        if (tracking.detail === 'off' || !tracking.fields.profile) continue;
         const b = birthdayParts(p.profile?.birthday);
         if (!b || b.day !== today.day || b.month !== today.month) continue;
         lines.push(`TODAY is ${p.name}'s birthday in the story. Close friends or family may already know and acknowledge it naturally; strangers know only if told. Respect the scene and each character's personality; no compulsory party, gifts, or omniscient announcements.`);
@@ -91,23 +96,24 @@ export function birthdayLines(state, opts) {
 // ---------------------------------------------------------------- состояние для модели
 
 function personLine(p, opts) {
+    const tracking = trackingFor(p, opts.s);
     const parts = [];
-    if (withStats(opts) && p.stats) {
+    if (withStats(opts) && p.stats && tracking.fields.stats) {
         const t = opts.stats.filter((k) => p.stats[k] !== undefined).map((k) => `${STAT_NAMES[k]} ${Math.round(p.stats[k])}`).join(', ');
         if (t) parts.push(t);
     }
-    if (simsFull(opts) && opts.s.modules.sims.showMoney && p.money !== undefined && p.money !== null) {
+    if (simsFull(opts) && tracking.fields.money && opts.s.modules.sims.showMoney && p.money !== undefined && p.money !== null) {
         parts.push(`деньги ${formatMoney(p.money, opts.s.modules.sims.currency)}`);
     }
-    if (opts.on.relations && p.role !== 'user' && typeof p.aff === 'number') {
+    if (opts.on.relations && tracking.fields.relations && p.role !== 'user' && typeof p.aff === 'number') {
         parts.push(`affinity→${opts.userName}: ${Math.round(p.aff)}${p.rel ? ` (${p.rel})` : ''}`);
     }
-    if (p.mood && p.role !== 'user') parts.push(`настроение: ${p.mood}`);
-    if (simsFull(opts) && p.excitement > 0) parts.push(`эмоциональный подъём (НЕ сексуальный): ${Math.round(p.excitement)}`);
-    if (simsFull(opts) && opts.s.modules.sims.birthdays !== false && birthdayParts(p.profile?.birthday)) {
+    if (tracking.fields.mood && p.mood && p.role !== 'user') parts.push(`настроение: ${p.mood}`);
+    if (withEmotions(opts) && tracking.fields.stats && Number.isFinite(p.excitement)) parts.push(`возбуждение (эмоциональное, НЕ сексуальное): ${Math.round(p.excitement)}`);
+    if (simsFull(opts) && tracking.fields.profile && opts.s.modules.sims.birthdays !== false && birthdayParts(p.profile?.birthday)) {
         parts.push(`день рождения: ${p.profile.birthday}${p.profile.birthdayGenerated ? ' (автоматическая дата; канон может уточнить)' : ''}`);
     }
-    if (p.outfit) parts.push(`одежда: ${p.outfit}`);
+    if (tracking.fields.outfit && p.outfit) parts.push(`одежда: ${p.outfit}`);
     return `- ${p.name} [${p.role}]: ${parts.join(' · ') || '—'}`;
 }
 
@@ -115,6 +121,8 @@ export function collectWarnings(state, opts) {
     const out = [];
     if (!withStats(opts)) return out;
     for (const p of scenePeople(state)) {
+        const tracking = trackingFor(p, opts.s);
+        if (!tracking.fields.stats) continue;
         if (!p.stats) continue;
         for (const k of opts.stats) {
             const def = STAT_DEFS[k] ?? {};
@@ -152,9 +160,9 @@ export function stateLines(state, opts) {
 
     const people = Object.values(state.people ?? {});
     const scene = new Set(state.scene ?? []);
-    const shown = sortPeople(people.filter((p) => p.role === 'char' || p.role === 'user' || scene.has(p.id)));
+    const shown = sortPeople(people.filter((p) => trackingFor(p, opts.s).detail !== 'off' && (p.role === 'char' || p.role === 'user' || scene.has(p.id))));
     for (const p of shown) lines.push(personLine(p, opts));
-    const absent = people.filter((p) => !shown.includes(p)).map((p) => p.name);
+    const absent = people.filter((p) => trackingFor(p, opts.s).detail !== 'off' && !shown.includes(p)).map((p) => p.name);
     if (absent.length) lines.push(`Known NPCs not in the scene: ${absent.slice(-12).join(', ')}.`);
 
     const warnings = collectWarnings(state, opts);
@@ -182,17 +190,20 @@ export function schema(state, request, opts) {
 
     const full = request.has('sims') && simsFull(opts);
     const stats = full && withStats(opts);
+    const emotions = full && withEmotions(opts);
     const rel = request.has('relations');
     const zero = Object.fromEntries(opts.stats.map((k) => [k, 0]));
     const char = { name: C, role: 'char' };
     if (full) Object.assign(char, { mood: '…' });
     char.outfit = '…';
     if (full || (rel && opts.s.modules.relations.thoughts)) char.thought = '…';
-    if (stats) char.d = { ...zero, excitement: 0 };
+    if (stats || emotions) char.d = { ...(stats ? zero : {}), ...(emotions ? { excitement: 0 } : {}) };
+    if (stats || emotions) char.reasons = Object.fromEntries(Object.keys(char.d).map(k => [k, '…']));
     if (rel) Object.assign(char, { aff: 0, rel: '…' });
 
     const user = { name: U, role: 'user', outfit: '…' };
-    if (stats) user.d = { ...zero, excitement: 0 };
+    if (stats || emotions) user.d = { ...(stats ? zero : {}), ...(emotions ? { excitement: 0 } : {}) };
+    if (stats || emotions) user.reasons = Object.fromEntries(Object.keys(user.d).map(k => [k, '…']));
     if ((full || rel) && userThoughts(opts)) user.thought = '…';
     out.people = [char, user];
 
@@ -200,15 +211,29 @@ export function schema(state, request, opts) {
     if (npcMax > 0) {
         const npc = { name: 'Имя NPC', role: 'npc', outfit: '…' };
         if (full) npc.mood = '…';
-        if (full && opts.s.modules.sims.npcDetail === 'full') {
+        if (full && trackingFor(npc, opts.s).detail === 'full') {
             npc.thought = '…';
-            if (stats) npc.d = { ...zero, excitement: 0 };
+            if (stats || emotions) npc.d = { ...(stats ? zero : {}), ...(emotions ? { excitement: 0 } : {}) };
         } else if (rel && opts.s.modules.relations.npc && opts.s.modules.relations.thoughts) {
             npc.thought = '…';
         }
         if (rel && opts.s.modules.relations.npc) Object.assign(npc, { aff: 0, rel: '…' });
         out.people.push(npc);
     }
+    out.people = out.people.filter((p) => {
+        const tracking = trackingFor(p, opts.s);
+        if (tracking.detail === 'off') return false;
+        if (p.d) {
+            if (!tracking.fields.stats) for (const key of opts.stats) { delete p.d[key]; if (p.reasons) delete p.reasons[key]; }
+            if (!tracking.fields.stats) { delete p.d.excitement; if (p.reasons) delete p.reasons.excitement; }
+            if (!Object.keys(p.d).length) delete p.d;
+        }
+        if (!tracking.fields.mood) delete p.mood;
+        if (!tracking.fields.outfit) delete p.outfit;
+        if (!tracking.fields.thought) delete p.thought;
+        if (!tracking.fields.relations) { delete p.aff; delete p.rel; }
+        return true;
+    });
     if (full && opts.s.modules.sims.showMoney) out.money = [{ who: C, amount: -450, note: 'кофе' }];
     return out;
 }
@@ -217,23 +242,26 @@ export function rules(state, request, opts) {
     const C = opts.charName || 'Character';
     const U = opts.userName || 'User';
     const r = [];
+    r.push(...trackingRules(opts.s, opts));
     r.push('- date/time: the in-story moment at the END of this reply. Time only moves forward and matches events (a conversation ≈ minutes, sleep ≈ hours). Day of week is computed by the system.');
     r.push('- weather: short. location: short place name; reuse EXACTLY the same name while the scene stays there.');
     if (!needPeople(request, opts)) return r;
 
     const full = request.has('sims') && simsFull(opts);
     const stats = full && withStats(opts);
+    const emotions = full && withEmotions(opts);
     const rel = request.has('relations');
     const npcMax = Number(opts.s.modules.sims.npcMax) || 0;
     r.push(`- people: everyone physically present in the scene: ${C} first, then ${U}, then ${npcMax > 0 ? `at most ${npcMax} most important NPC(s)` : 'NO NPCs'}. Skip people who are absent.`);
     if (stats) {
         r.push(`- Stats are 0–100: ${opts.stats.map((k) => `${k} = ${STAT_NAMES[k]}`).join(', ')}.`);
         r.push('- d: change caused ONLY by events of this reply (full meal food +40…+60, snack +15, workout energy −20 and hygiene −20). 0 if nothing happened. Passive change over time is applied by the system — never include it.');
+        r.push('- reasons: for every nonzero d or set field, supply a brief factual reason under the same key, e.g. {"d":{"food":25},"reasons":{"food":"съел сэндвич"}}. Explain only events in this reply, never invent a cause. The system records passive time effects separately. Optional reasons.aff explains an attitude change.');
         r.push('- set: absolute value ONLY for full resets: woke up after a full night of sleep → {"energy":90}; shower/bath → {"hygiene":100}; orgasm → {"arousal":0}. Example: {"name":"…","role":"char","set":{"hygiene":100}}.');
-        r.push('- arousal is SEXUAL arousal only. Ordinary joy, nervous energy, competition and adrenaline change the separate emotional field d.excitement (0 if none), never d.arousal. Actual sexual attraction/touch can raise arousal; loss of interest, discomfort, distraction or satisfaction can LOWER it. Never add arousal every scene by habit. The system passively lets it settle. Arousal below 85 does not steer behaviour; at 85+ express only context-appropriate subtle cues, never forced sexual behaviour or implied consent.');
-        r.push('- excitement is a separate 0–100 emotional activation value, outside stats; use d.excitement for event changes or set.excitement:0 when fully calmed. It is not attraction and does not require sexual behaviour.');
+        r.push('- arousal is SEXUAL arousal only (UI label «Страсть»). Ordinary joy, nervous energy, competition and adrenaline change the separate emotional field d.excitement (0 if none), never d.arousal. Actual sexual attraction/touch can raise arousal; loss of interest, discomfort, distraction or satisfaction can LOWER it. Never add arousal every scene by habit. The system passively lets it settle. Arousal below 85 does not steer behaviour; at 85+ express only context-appropriate subtle cues, never forced sexual behaviour or implied consent.');
         r.push('- Low needs have proportionate observable effects: hygiene below 25, food at 20 or less, energy at 15 or less. Other people react only to visible signs and in character, without repetitive announcements, disgust or melodrama. At zero food/energy, faintness or fainting is possible only if story circumstances support it; respect the user’s control over their character.');
     }
+    if (emotions) r.push('- excitement (UI label «Возбуждение») is a separate 0–100 EMOTIONAL activation value, outside stats: joy, anticipation, nerves, азарт. Use d.excitement for event changes or set.excitement:0 when fully calmed; explain with reasons.excitement. It is NOT sexual attraction and does not require sexual behaviour. Sexual excitement remains only stats.arousal / «Страсть»; never move existing arousal numbers to excitement.');
     if (full) r.push('- mood: 1–3 words. outfit: short but concrete (what is visible).');
     else r.push('- outfit: short but concrete (what is visible).');
     r.push('- outfit is the COMPLETE currently worn visible outfit, updated even for partial changes: remove the jacket if taken off, retain the shirt/trousers, add the scarf if put on. Read the scene and the previous outfit; do not replace the whole outfit with just the changed item or keep removed garments. If fully undressed, say so explicitly. Clothing from wardrobe/image context is valid starting context, not a reason to ignore later changes in the story.');
@@ -251,7 +279,7 @@ export function rules(state, request, opts) {
         r.push(`- rel: short name of their relationship with ${U} (e.g. «незнакомец», «коллега», «соперник», «друг», «влюблён(а)»). Repeat the current one unless it really changed.`);
         if (!opts.s.modules.relations.npc) r.push('- NPC: no aff/rel.');
     }
-    if (full && opts.s.modules.sims.npcDetail !== 'full' && npcMax > 0) r.push('- NPC: no stats.');
+    if (full && npcMax > 0) r.push('- NPCs tracked as short: no stats, money, profile, or private thought. A pinned or individually fully tracked NPC may supply the configured fields.');
     if (full && opts.s.modules.sims.showMoney) {
         r.push('- money: only actual spending (negative) or income (positive) in this reply, realistic prices. [] if none. Never output balances — the system keeps them.');
     }
@@ -335,12 +363,16 @@ export function applyScene(next, base, data, opts) {
 
     const decayMinutes = Math.min(elapsed, MAX_DECAY_MINUTES);
     for (const p of Object.values(next.people)) {
+        p.changes = {};
         p._old = p.stats ? { ...p.stats } : null;
         p._oldAff = typeof p.aff === 'number' ? p.aff : null;
-        if (!p.stats || !withStats(opts)) continue;
-        for (const k of opts.stats) {
+        p._oldExcitement = Number.isFinite(p.excitement) ? p.excitement : null;
+        const tracking = trackingFor(p, opts.s);
+        if (tracking.detail === 'off') continue;
+        for (const k of tracking.fields.stats && p.stats && withStats(opts) ? opts.stats : []) {
             if (p.stats[k] === undefined) continue;
             const rate = toNumber(opts.decay[k], 0);
+            const previous = p.stats[k];
             if (k === 'arousal') {
                 // Legacy positive rates must never create attraction from the passage of time.
                 // Rest settles elevated arousal toward a quiet baseline without raising low values.
@@ -348,8 +380,15 @@ export function applyScene(next, base, data, opts) {
             } else {
                 p.stats[k] = clamp(p.stats[k] + rate * decayMinutes / 120, 0, 100);
             }
+            recordChange(p, k, 'time', previous, p.stats[k], k === 'arousal'
+                ? `Страсть постепенно утихает за ${decayMinutes} мин игрового времени`
+                : `Прошло ${decayMinutes} мин игрового времени; скорость ${rate} за 2 ч`);
         }
-        if (Number.isFinite(p.excitement)) p.excitement = clamp(p.excitement - 15 * decayMinutes / 120, 0, 100);
+        if (withEmotions(opts) && tracking.fields.stats && Number.isFinite(p.excitement)) {
+            const previous = p.excitement;
+            p.excitement = clamp(p.excitement - 15 * decayMinutes / 120, 0, 100);
+            recordChange(p, 'excitement', 'time', previous, p.excitement, `Эмоциональное возбуждение стихает за ${decayMinutes} мин игрового времени`);
+        }
     }
 }
 
@@ -357,22 +396,46 @@ export function applyScene(next, base, data, opts) {
 export function applyPeople(next, base, data, request, opts) {
     const full = request.has('sims') && simsFull(opts);
     const stats = full && withStats(opts);
+    const emotions = full && withEmotions(opts);
     const rel = request.has('relations');
     const relNpc = rel && opts.s.modules.relations.npc;
     const step = Number(opts.s.modules.relations.maxStep) || 5;
     const npcMax = Number(opts.s.modules.sims.npcMax) || 0;
-    const npcFull = opts.s.modules.sims.npcDetail === 'full';
 
     for (const p of Object.values(next.people)) {
         p.diff = {};
         p.affDiff = 0;
-        if (full || (rel && opts.s.modules.relations.thoughts) || (p.role === 'user' && !userThoughts(opts))) p.thought = '';
-        if (full) ensureBirthday(p, opts);
+        const tracking = trackingFor(p, opts.s);
+        if ((p.role === 'user' && !userThoughts(opts))
+            || (tracking.fields.thought && (full || (rel && opts.s.modules.relations.thoughts)))) p.thought = '';
+        if (full && tracking.fields.profile) ensureBirthday(p, opts);
     }
     next.scene = [];
     next.tx = [];
 
-    const entries = Array.isArray(data.people) ? data.people : [];
+    let entries = Array.isArray(data.people) ? data.people : [];
+    const pinnedName = normName(opts.s.tracking?.pinnedNpc);
+    if (pinnedName && npcMax > 0) {
+        // Reserve the existing NPC budget for a pinned person who is actually
+        // present in this update. Reorder NPC slots only: bot/user entries keep
+        // their positions, and an absent pin never manufactures a new person.
+        const npcEntry = (entry) => {
+            if (!entry || typeof entry !== 'object') return false;
+            let role = String(entry.role ?? '').toLowerCase();
+            if (!['char', 'user', 'npc'].includes(role)) role = 'npc';
+            const name = str(entry.name, 60);
+            if (role !== 'user' && normName(name) === normName(opts.userName)) return false;
+            return (findPerson(next.people, name, role)?.role ?? role) === 'npc';
+        };
+        const isPinned = (entry) => normName(entry.name) === pinnedName
+            || normName(findPerson(next.people, entry.name, 'npc')?.name) === pinnedName;
+        const npcs = entries.filter(npcEntry);
+        if (npcs.some(isPinned)) {
+            const ordered = [...npcs.filter(isPinned), ...npcs.filter(entry => !isPinned(entry))];
+            let index = 0;
+            entries = entries.map(entry => npcEntry(entry) ? ordered[index++] : entry);
+        }
+    }
     let npcCount = 0;
     for (const entry of entries) {
         if (!entry || typeof entry !== 'object') continue;
@@ -383,14 +446,17 @@ export function applyPeople(next, base, data, request, opts) {
         if (role !== 'user' && normName(name) === normName(opts.userName)) role = 'user';
 
         let person = findPerson(next.people, name, role);
+        const tracking = trackingFor(person ?? { name, role }, opts.s);
+        if (tracking.detail === 'off') continue;
+        const trackStats = tracking.fields.stats;
+        const trackEmotions = tracking.fields.stats;
         const isNew = entry.new && typeof entry.new === 'object' ? entry.new : {};
         let created = false;
         if (!person) {
             created = true;
             if (role === 'npc' && npcCount >= npcMax) continue;
             const id = makeId(next.people, role === 'user' ? opts.userName : name, role);
-            const hasStats = role !== 'npc' || npcFull;
-            const st = hasStats && withStats(opts)
+            const st = trackStats && withStats(opts)
                 ? { ...Object.fromEntries(opts.stats.map((k) => [k, DEFAULT_STAT[k]])), ...readStats(isNew.stats, opts.stats) }
                 : null;
             person = {
@@ -398,33 +464,46 @@ export function applyPeople(next, base, data, request, opts) {
                 name: role === 'user' ? (opts.userName || name) : name,
                 role,
                 stats: st ? Object.fromEntries(Object.entries(st).map(([k, v]) => [k, clamp(v, 0, 100)])) : null,
-                money: isNew.money !== undefined ? toNumber(isNew.money, null) : null,
-                profile: { birthday: birthdayParts(isNew.birthday) ? str(isNew.birthday, 20) : '', zodiac: str(isNew.zodiac, 20), mbti: str(isNew.mbti, 60) },
+                money: tracking.fields.money && isNew.money !== undefined ? toNumber(isNew.money, null) : null,
+                profile: tracking.fields.profile ? { birthday: birthdayParts(isNew.birthday) ? str(isNew.birthday, 20) : '', zodiac: str(isNew.zodiac, 20), mbti: str(isNew.mbti, 60) } : {},
                 mood: '', outfit: '', thought: '', diff: {}, affDiff: 0,
-                excitement: stats ? clamp(toNumber(isNew.excitement, 0), 0, 100) : 0,
+                excitement: emotions && trackEmotions ? clamp(toNumber(isNew.excitement, 0), 0, 100) : 0,
+                changes: {},
                 _old: null, _oldAff: null,
             };
-            if (role !== 'user' && (rel || isNew.aff !== undefined)) {
+            for (const [k, v] of Object.entries(person.stats ?? {})) {
+                recordChange(person, k, 'initial', null, v, isNew.stats?.[k] !== undefined ? 'Начальное значение от модели' : 'Начальное значение по умолчанию');
+            }
+            if (emotions && trackEmotions) recordChange(person, 'excitement', 'initial', null, person.excitement, isNew.excitement !== undefined ? 'Начальное эмоциональное возбуждение от модели' : 'Начальное эмоциональное возбуждение по умолчанию');
+            if (person.money !== null) recordChange(person, 'money', 'initial', null, person.money, 'Начальный баланс от модели');
+            if (tracking.fields.relations && role !== 'user' && (rel || isNew.aff !== undefined)) {
                 const start = toNumber(isNew.aff ?? entry.aff_start, NaN);
                 person.aff = Number.isFinite(start) ? clamp(start, -100, 100) : 0;
+                recordChange(person, 'aff', 'initial', null, person.aff, 'Начальное отношение');
             }
             next.people[person.id] = person;
         } else {
             // Уже знакомый человек: профиль только дополняем, ничего не перезаписываем.
             person.profile ??= {};
-            for (const f of ['zodiac', 'mbti']) {
+            for (const f of tracking.fields.profile ? ['zodiac', 'mbti'] : []) {
                 if (!person.profile[f] && isNew[f]) person.profile[f] = str(isNew[f], 60);
             }
-            if ((person.money === null || person.money === undefined) && isNew.money !== undefined) {
+            if (tracking.fields.money && (person.money === null || person.money === undefined) && isNew.money !== undefined) {
                 person.money = toNumber(isNew.money, null);
+                recordChange(person, 'money', 'initial', null, person.money, 'Начальный баланс от модели');
             }
-            if (stats && !person.stats && (person.role !== 'npc' || npcFull)) {
+            if (stats && trackStats && !person.stats) {
                 person.stats = Object.fromEntries(opts.stats.map((k) => [k, DEFAULT_STAT[k]]));
                 Object.assign(person.stats, readStats(isNew.stats, opts.stats));
+                for (const [k, v] of Object.entries(person.stats)) {
+                    person.stats[k] = clamp(v, 0, 100);
+                    recordChange(person, k, 'initial', null, person.stats[k], isNew.stats?.[k] !== undefined ? 'Начальное значение от модели' : 'Начальное значение по умолчанию');
+                }
             }
-            if (rel && person.role !== 'user' && typeof person.aff !== 'number') {
+            if (rel && tracking.fields.relations && person.role !== 'user' && typeof person.aff !== 'number') {
                 const start = toNumber(isNew.aff, NaN);
                 person.aff = Number.isFinite(start) ? clamp(start, -100, 100) : 0;
+                recordChange(person, 'aff', 'initial', null, person.aff, 'Начальное отношение');
             }
         }
         if (person.role === 'npc') {
@@ -432,28 +511,52 @@ export function applyPeople(next, base, data, request, opts) {
             npcCount++;
         }
         if (person.role === 'npc' && role === 'char') person.role = 'char';
-        if (full) ensureBirthday(person, opts, isNew.birthday ?? entry.birthday);
+        if (full && tracking.fields.profile) ensureBirthday(person, opts, isNew.birthday ?? entry.birthday);
+        if (emotions && trackEmotions && !Number.isFinite(person.excitement)) {
+            person.excitement = 0;
+            recordChange(person, 'excitement', 'initial', null, 0, 'Начальное эмоциональное возбуждение по умолчанию');
+        }
 
-        if (full && person.role !== 'user') person.mood = str(entry.mood, 60) || person.mood || '';
-        person.outfit = str(entry.outfit, 500) || person.outfit || '';
-        if (person.role !== 'user' && (full || (rel && opts.s.modules.relations.thoughts))) person.thought = str(entry.thought, 500);
-        if (person.role === 'user' && userThoughts(opts) && (full || rel)) person.thought = str(entry.thought, 500);
+        if (full && tracking.fields.mood && person.role !== 'user') person.mood = str(entry.mood, 60) || person.mood || '';
+        if (tracking.fields.outfit) person.outfit = str(entry.outfit, 500) || person.outfit || '';
+        if (tracking.fields.thought && person.role !== 'user' && (full || (rel && opts.s.modules.relations.thoughts))) person.thought = str(entry.thought, 500);
+        if (tracking.fields.thought && person.role === 'user' && userThoughts(opts) && (full || rel)) person.thought = str(entry.thought, 500);
 
-        if (stats && person.stats) {
-            for (const [k, v] of Object.entries(readStats(entry.set, opts.stats))) person.stats[k] = clamp(v, 0, 100);
+        if (stats && trackStats && person.stats) {
+            for (const [k, v] of Object.entries(readStats(entry.set, opts.stats))) {
+                const previous = person.stats[k];
+                person.stats[k] = clamp(v, 0, 100);
+                recordChange(person, k, 'event', previous, person.stats[k], eventReason(entry, k));
+            }
             for (const [k, v] of Object.entries(readStats(entry.d ?? entry.delta, opts.stats))) {
                 if (person.stats[k] === undefined) continue;
+                const previous = person.stats[k];
                 person.stats[k] = clamp(person.stats[k] + clamp(v, -100, 100), 0, 100);
+                recordChange(person, k, 'event', previous, person.stats[k], eventReason(entry, k));
             }
+        }
+        if (emotions && trackEmotions) {
             const emotionSet = readStats(entry.set, ['excitement']);
             const emotionDelta = readStats(entry.d ?? entry.delta, ['excitement']);
-            if (emotionSet.excitement !== undefined) person.excitement = clamp(emotionSet.excitement, 0, 100);
-            if (emotionDelta.excitement !== undefined) person.excitement = clamp(toNumber(person.excitement, 0) + clamp(emotionDelta.excitement, -100, 100), 0, 100);
+            if (emotionSet.excitement !== undefined) {
+                const previous = toNumber(person.excitement, 0);
+                person.excitement = clamp(emotionSet.excitement, 0, 100);
+                recordChange(person, 'excitement', 'event', previous, person.excitement, eventReason(entry, 'excitement'));
+            }
+            if (emotionDelta.excitement !== undefined) {
+                const previous = toNumber(person.excitement, 0);
+                person.excitement = clamp(previous + clamp(emotionDelta.excitement, -100, 100), 0, 100);
+                recordChange(person, 'excitement', 'event', previous, person.excitement, eventReason(entry, 'excitement'));
+            }
         }
-        if (rel && person.role !== 'user' && (person.role === 'char' || relNpc)) {
+        if (rel && tracking.fields.relations && person.role !== 'user' && (person.role === 'char' || relNpc)) {
             if (typeof person.aff !== 'number') person.aff = 0;
             // у нового человека aff в "new" — стартовое значение, а не изменение
-            if (!created) person.aff = clamp(person.aff + clamp(toNumber(entry.aff, 0), -step, step), -100, 100);
+            if (!created) {
+                const previous = person.aff;
+                person.aff = clamp(person.aff + clamp(toNumber(entry.aff, 0), -step, step), -100, 100);
+                recordChange(person, 'aff', 'event', previous, person.aff, eventReason(entry, 'aff'));
+            }
             const label = str(entry.rel, 40);
             if (label) person.rel = label;
         }
@@ -463,7 +566,7 @@ export function applyPeople(next, base, data, request, opts) {
     // Если модель забыла кого-то из главных — оставляем их в сцене прошлого блока.
     for (const id of base?.scene ?? []) {
         const p = next.people[id];
-        if (p && (p.role === 'char' || p.role === 'user') && !next.scene.includes(id)) next.scene.push(id);
+        if (p && trackingFor(p, opts.s).detail !== 'off' && (p.role === 'char' || p.role === 'user') && !next.scene.includes(id)) next.scene.push(id);
     }
 
     // Деньги: только транзакции, баланс считает код
@@ -474,8 +577,13 @@ export function applyPeople(next, base, data, request, opts) {
             if (!Number.isFinite(amount) || amount === 0) continue;
             const person = findPersonByName(next, str(tx.who, 60), opts);
             if (!person) continue;
-            person.money = toNumber(person.money, 0) + amount;
-            next.tx.push({ who: person.name, id: person.id, amount, note: str(tx.note, 80) });
+            const tracking = trackingFor(person, opts.s);
+            if (tracking.detail === 'off' || !tracking.fields.money) continue;
+            const previous = toNumber(person.money, 0);
+            person.money = previous + amount;
+            const note = str(tx.note, 80);
+            recordChange(person, 'money', 'event', previous, person.money, note || 'Транзакция в сцене (модель не уточнила причину)');
+            next.tx.push({ who: person.name, id: person.id, amount, note });
         }
     }
 }
@@ -493,9 +601,13 @@ export function finishPeople(next) {
             p.aff = Math.round(p.aff);
             p.affDiff = p._oldAff === null || p._oldAff === undefined ? 0 : p.aff - Math.round(p._oldAff);
         }
-        if (Number.isFinite(p.excitement)) p.excitement = Math.round(p.excitement * 10000) / 10000;
+        if (Number.isFinite(p.excitement)) {
+            p.excitement = Math.round(p.excitement * 10000) / 10000;
+            p.excitementDiff = p._oldExcitement === null || p._oldExcitement === undefined ? 0 : Math.round(p.excitement) - Math.round(p._oldExcitement);
+        }
         delete p._old;
         delete p._oldAff;
+        delete p._oldExcitement;
     }
 }
 

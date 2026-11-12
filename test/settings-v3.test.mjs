@@ -34,7 +34,7 @@ test('обновление 0.2: пассивный рост исправляет
         assert.equal(settings.theme, 'noir');
         assert.equal(settings.modules.diary.mode, 'separate');
         assert.equal(settings.modules.diary.length, 'huge');
-        assert.equal(settings.schemaVersion, 3);
+        assert.equal(settings.schemaVersion, DEFAULTS.schemaVersion);
         assert.equal(saveCount(), 1);
 
         settings.modules.sims.stats.arousal.decay = -4;

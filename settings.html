@@ -1,7 +1,7 @@
 <div class="megainfo-settings">
     <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
-            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">UI · проба</span></b>
+            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">0.3.1</span></b>
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
@@ -16,70 +16,69 @@
                 </div>
             </div>
 
-            <!-- ============================================================ ВИД -->
-            <div class="inline-drawer">
-                <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-palette"></i> Внешний вид</span>
-                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+            <!-- Compact appearance, tracking, and gameplay presets -->
+            <div class="mi-ui-settings">
+                <div class="mi-ui-tabs" role="tablist" aria-label="Оформление и игра">
+                    <button type="button" class="mi-ui-tab" data-mi-config-tab="view" role="tab" aria-selected="true"><i class="fa-solid fa-palette"></i> Вид</button>
+                    <button type="button" class="mi-ui-tab" data-mi-config-tab="people" role="tab" aria-selected="false"><i class="fa-solid fa-users"></i> Персонажи</button>
+                    <button type="button" class="mi-ui-tab" data-mi-config-tab="presets" role="tab" aria-selected="false"><i class="fa-solid fa-wand-magic-sparkles"></i> Наборы</button>
                 </div>
-                <div class="inline-drawer-content">
+                <section class="mi-ui-pane" data-mi-config-panel="view" role="tabpanel">
+                    <div class="mi-ui-subtabs" role="tablist" aria-label="Внешний вид">
+                        <button type="button" class="mi-ui-subtab" data-mi-config-subtab="layout" role="tab" aria-selected="true">Компоновка</button>
+                        <button type="button" class="mi-ui-subtab" data-mi-config-subtab="colors" role="tab" aria-selected="false">Текст и цвета</button>
+                    </div>
+                    <div class="mi-ui-pane mi-setting-card" data-mi-config-subpanel="layout">
+                        <div class="mi-set-sub">Панель ответа</div>
+                        <div class="mi-set-grid">
+                            <div class="mi-set-row"><label>Раскладка</label><select class="text_pole" data-mi-setting="layout"><option value="tabs">Вкладками</option><option value="stack">Блоками друг под другом</option></select></div>
+                            <div class="mi-set-row"><label>Положение</label><select class="text_pole" data-mi-setting="placement"><option value="top">Перед текстом ответа</option><option value="bottom">После текста ответа</option></select></div>
+                            <div class="mi-set-row"><label>На последних N ответах (0 — везде)</label><input type="number" class="text_pole" min="0" max="999" data-mi-setting="showOnLast"></div>
+                        </div>
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="collapsed"><span>Свёрнутая панель по умолчанию</span></label>
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="display.editControls"><span>Показывать карандашики в «Пульсе»</span></label>
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="hideWhileStreaming"><span>Прятать служебный блок, пока модель печатает</span></label>
+                        <details class="mi-more"><summary>Порядок вкладок</summary><div class="mi-hint">Стрелки меняют порядок; невключённые блоки не появляются в ответе.</div><div id="megainfo_tab_order" class="mi-order-list"></div></details>
+                        <details class="mi-more"><summary>Что показывать в «Пульсе»</summary><div class="mi-hint">Можно показать сведения сразу, спрятать под раскрытие или скрыть. На хранение данных это не влияет.</div><div id="megainfo_pulse_fields" class="mi-set-grid"></div></details>
+                    </div>
+                    <div class="mi-ui-pane mi-setting-card" data-mi-config-subpanel="colors" hidden>
+                        <div class="mi-set-sub">Текст и цвета</div>
+                        <div class="mi-set-grid">
+                            <div class="mi-set-row"><label>Тема</label><select class="text_pole" data-mi-setting="theme"><option value="tavern">Как в таверне</option><option value="glass">Стекло</option><option value="noir">Чернила</option><option value="parchment">Бумага</option><option value="pastel">Румянец</option><option value="minimal">Минимал</option><option value="custom">Свои цвета</option></select></div>
+                            <div class="mi-set-row"><label>Шрифт</label><select class="text_pole" data-mi-setting="font"><option value="inherit">Как в таверне</option><option value="sans">Без засечек</option><option value="serif">С засечками</option><option value="rounded">Округлый</option><option value="mono">Моноширинный</option></select></div>
+                            <div class="mi-set-row"><label>Размер текста, %</label><input type="number" class="text_pole" min="80" max="150" step="5" data-mi-setting="display.fontSize"></div>
+                            <div class="mi-set-row"><label>Контраст</label><select class="text_pole" data-mi-setting="display.contrast"><option value="normal">Обычный</option><option value="high">Высокий</option><option value="soft">Мягкий</option></select></div>
+                        </div>
+                        <div class="mi-set-grid" id="megainfo_custom_colors"><div class="mi-set-row"><label>Акцент</label><input type="color" data-mi-setting="custom.accent"></div><div class="mi-set-row"><label>Фон</label><input type="color" data-mi-setting="custom.bg"></div><div class="mi-set-row"><label>Текст</label><input type="color" data-mi-setting="custom.text"></div></div>
+                        <details class="mi-more"><summary>Свой CSS</summary><textarea class="text_pole" rows="3" data-mi-setting="customCss" placeholder=".mi-host { --mi-accent: #ed91ad; }"></textarea></details>
+                    </div>
+                </section>
+                <section class="mi-ui-pane mi-setting-card" data-mi-config-panel="people" role="tabpanel" hidden>
+                    <div class="mi-set-sub">Кого отслеживать</div>
+                    <div class="mi-hint">Подробно — все выбранные сведения. Кратко — настроение, одежда и связи. Выключено — без новых обновлений; прежние данные остаются в чате.</div>
                     <div class="mi-set-grid">
-                        <div class="mi-set-row">
-                            <label>Тема</label>
-                            <select class="text_pole" data-mi-setting="theme">
-                                <option value="tavern">Как в таверне (цвета вашей темы)</option>
-                                <option value="glass">Стекло</option>
-                                <option value="noir">Чернила</option>
-                                <option value="parchment">Бумага</option>
-                                <option value="pastel">Мята</option>
-                                <option value="minimal">Минимал</option>
-                                <option value="custom">Свои цвета</option>
-                            </select>
-                        </div>
-                        <div class="mi-set-row">
-                            <label>Шрифт</label>
-                            <select class="text_pole" data-mi-setting="font">
-                                <option value="inherit">Как в таверне</option>
-                                <option value="sans">Без засечек</option>
-                                <option value="serif">С засечками</option>
-                                <option value="rounded">Округлый</option>
-                                <option value="mono">Моноширинный</option>
-                            </select>
-                        </div>
+                        <div class="mi-set-row"><label>Главный бот</label><select class="text_pole" data-mi-setting="tracking.roles.char"><option value="full">Подробно</option><option value="short">Кратко</option><option value="off">Не вести</option></select></div>
+                        <div class="mi-set-row"><label>Персона пользователя</label><select class="text_pole" data-mi-setting="tracking.roles.user"><option value="full">Подробно</option><option value="short">Кратко</option><option value="off">Не вести</option></select></div>
+                        <div class="mi-set-row"><label>Остальные NPC</label><select class="text_pole" data-mi-setting="tracking.roles.npc"><option value="short">Кратко</option><option value="full">Подробно</option><option value="off">Не вести</option></select></div>
                     </div>
-                    <div class="mi-set-grid" id="megainfo_custom_colors">
-                        <div class="mi-set-row"><label>Акцент</label><input type="color" data-mi-setting="custom.accent"></div>
-                        <div class="mi-set-row"><label>Фон</label><input type="color" data-mi-setting="custom.bg"></div>
-                        <div class="mi-set-row"><label>Текст</label><input type="color" data-mi-setting="custom.text"></div>
-                    </div>
-                    <div class="mi-set-grid">
-                        <div class="mi-set-row">
-                            <label>Раскладка</label>
-                            <select class="text_pole" data-mi-setting="layout">
-                                <option value="tabs">Вкладками (компактно)</option>
-                                <option value="stack">Блоками друг под другом</option>
-                            </select>
-                        </div>
-                        <div class="mi-set-row">
-                            <label>Где показывать панель</label>
-                            <select class="text_pole" data-mi-setting="placement">
-                                <option value="top">Перед текстом ответа</option>
-                                <option value="bottom">После текста ответа</option>
-                            </select>
-                        </div>
-                        <div class="mi-set-row">
-                            <label title="Старые блоки скрываются, чтобы не загромождать чат. Данные не теряются. 0 = показывать везде.">На последних N ответах</label>
-                            <input type="number" class="text_pole" min="0" max="999" data-mi-setting="showOnLast">
-                        </div>
-                    </div>
-                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="collapsed"><span>Свёрнуты по умолчанию (видна только шапка)</span></label>
-                    <div class="mi-hint">Если свернуть или развернуть панель вручную, её состояние сохранится в этом чате. «Заметки», «На связи» и «Детали» показываются отдельно от панели.</div>
-                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="hideWhileStreaming"><span>Прятать сырой блок, пока модель печатает</span></label>
-                    <div class="mi-set-row">
-                        <label>Свой CSS (для продвинутых, применяется поверх темы)</label>
-                        <textarea class="text_pole" rows="3" data-mi-setting="customCss" placeholder=".mi-host { --mi-accent: #ff77aa; }"></textarea>
-                    </div>
-                </div>
+                    <div class="mi-set-row"><label>Закреплённый важный NPC (подробно)</label><input class="text_pole" type="text" list="megainfo_known_people" maxlength="100" data-mi-setting="tracking.pinnedNpc" placeholder="Имя NPC"></div>
+                    <datalist id="megainfo_known_people"></datalist>
+                    <details class="mi-more"><summary>Сведения для отдельного персонажа</summary>
+                        <div class="mi-hint">Выберите знакомое имя или введите своё. Индивидуальные настройки имеют приоритет над настройками роли и закреплением.</div>
+                        <div class="mi-set-row"><label>Имя</label><input class="text_pole" type="text" list="megainfo_known_people" maxlength="100" id="megainfo_tracking_name" placeholder="Бот, пользователь или NPC"></div>
+                        <div class="mi-set-row"><label>Подробность</label><select class="text_pole" id="megainfo_tracking_detail"><option value="inherit">Как для роли</option><option value="full">Подробно</option><option value="short">Кратко</option><option value="off">Не вести</option></select></div>
+                        <div id="megainfo_tracking_fields" class="mi-track-fields"></div>
+                        <button type="button" class="menu_button" id="megainfo_tracking_reset">Сбросить индивидуальные настройки</button>
+                    </details>
+                </section>
+                <section class="mi-ui-pane mi-preset-card" data-mi-config-panel="presets" role="tabpanel" hidden>
+                    <div class="mi-set-sub">Готовый набор для игры</div>
+                    <div class="mi-hint">Набор меняет включённые блоки и игровой темп. Подключения, ключи, оформление и данные чатов сохраняются. Выбор в списке ничего не применяет.</div>
+                    <div class="mi-set-row"><label>Набор</label><select class="text_pole" id="megainfo_preset"></select></div>
+                    <p id="megainfo_preset_description" class="mi-config-description"></p>
+                    <button type="button" class="menu_button menu_button_icon" id="megainfo_preset_apply"><i class="fa-solid fa-check"></i> Применить набор</button>
+                    <div id="megainfo_preset_status" class="mi-hint" role="status"></div>
+                </section>
             </div>
 
             <!-- ============================================================ ЗАПРОСЫ -->
@@ -219,10 +218,11 @@
                         <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.hygiene.decay">
                         <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.energy.on"><span>Бодрость</span></label>
                         <input type="number" class="text_pole" step="1" data-mi-setting="modules.sims.stats.energy.decay">
-                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.arousal.on"><span>Возбуждение</span></label>
+                        <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.arousal.on"><span>Страсть</span></label>
                         <input type="number" class="text_pole" step="1" max="0" data-mi-setting="modules.sims.stats.arousal.decay">
                     </div>
-                    <div class="mi-hint">Возбуждение здесь — сексуальное: со временем снижается, 0 отключает пассивный спад. Азарт и радость учитываются отдельно. На поведение влияет только высокий сексуальный порог. Голод, усталость и низкая гигиена заметны окружающим с учётом ситуации и характера, без обязательной драмы.</div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.excitement"><span>Отслеживать эмоциональное возбуждение</span></label>
+                    <div class="mi-hint">Страсть — сексуальное возбуждение: со временем снижается, 0 отключает пассивный спад. Возбуждение — радость, азарт и предвкушение; оно меняется только по событиям и не повышает страсть. На поведение влияет только высокий сексуальный порог. Голод, усталость и низкая гигиена заметны окружающим с учётом ситуации и характера, без обязательной драмы.</div>
                 </div>
             </div>
 
@@ -246,7 +246,7 @@
             <!-- SLOWBURN -->
             <div class="inline-drawer">
                 <div class="inline-drawer-toggle inline-drawer-header">
-                    <span><i class="fa-solid fa-hourglass-half"></i> Сближение — 10 стадий романа</span>
+                    <span><i class="fa-solid fa-hourglass-half"></i> Slow burn — 10 стадий романа</span>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content">
@@ -296,7 +296,20 @@
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.plot"><span>Сюжет и его прогресс</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.schedule"><span>Расписание персонажей (они его соблюдают)</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.rumors"><span>Слухи (NPC упоминают их в разговорах)</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.world.threads"><span>Нити сюжета: обещания, встречи и незакрытые события</span></label>
+                    <div class="mi-set-row"><label>Сколько нитей держать</label><input type="number" class="text_pole" min="1" max="12" data-mi-setting="modules.world.threadLimit"></div>
                     <div class="mi-set-row"><label>Сколько слухов держать</label><input type="number" class="text_pole" min="1" max="8" data-mi-setting="modules.world.rumorCount"></div>
+                </div>
+            </div>
+
+            <!-- POCKET -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header"><span><i class="fa-solid fa-briefcase"></i> Кармашек — значимые вещи при себе</span><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div>
+                <div class="inline-drawer-content">
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.pocket.enabled"><span>Включить</span></label>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.pocket.auto"><span>Автоматически замечать важные предметы</span></label>
+                    <div class="mi-hint">Ключ, подарок, памятная вещь или улика — только то, что важно для сцены. Не полный список имущества. Можно добавлять, менять и убирать вещи вручную у бота и пользователя. В режиме без автоматики модель не меняет кармашек.</div>
+                    <div class="mi-set-grid"><div class="mi-set-row"><label>Вещей на персонажа</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.maxItems"></div><div class="mi-set-row"><label>Проверять каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.every"></div></div>
                 </div>
             </div>
 

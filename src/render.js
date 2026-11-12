@@ -3,6 +3,7 @@
 
 import { STAT_DEFS, getSettings } from './settings.js';
 import { Extras, Loc, Marks, People, Slow } from './core/engine.js';
+import { trackingFor } from './tracking.js';
 import {
     esc, formatDuration, formatMoney, formatSigned, weekday,
 } from './util.js';
@@ -39,41 +40,108 @@ const para = (t) => (t ? `<p>${nl2br(t)}</p>` : '');
 
 // ---------------------------------------------------------------- персонажи (sims)
 
-function statRow(key, value, diff, view, crit) {
-    value = Math.round(value);
-    const def = STAT_DEFS[key];
-    if (view === 'chips') {
-        return `<span class="mi-chip${crit ? ' mi-crit' : ''}" title="${esc(def.label)}">${icon(def.icon)}${value}%${delta(diff)}</span>`;
-    }
-    return `<div class="mi-stat${crit ? ' mi-crit' : ''}">`
-        + `<span class="mi-stat-label">${icon(def.icon)}${esc(def.label)}</span>`
-        + `<span class="mi-bar"><span class="mi-bar-fill mi-stat-${key}" style="width:${value}%"></span></span>`
-        + `<span class="mi-stat-val">${value}%${delta(diff)}</span>`
-        + '</div>';
+const EMOTIONAL = { label: 'Возбуждение', icon: 'fa-face-smile-beam' };
+const CHANGE_KINDS = { time: 'По времени', event: 'В сцене', initial: 'Начальное значение', manual: 'Вручную' };
+
+function pulseMode(opts, key, fallback = 'show') {
+    const mode = opts.s.display?.pulse?.[key];
+    return ['show', 'collapse', 'hide'].includes(mode) ? mode : fallback;
 }
 
-function personCard(p, opts, warnings, { showRel = false } = {}) {
+function pulseSection(person, key, label, html, opts, fallback = 'show') {
+    if (!html) return '';
+    const mode = pulseMode(opts, key, fallback);
+    if (mode === 'hide') return '';
+    if (mode === 'show') return html;
+    return `<details class="mi-pulse-more" data-mi-sec="pulse:${esc(person.id)}:${esc(key)}"><summary>${esc(label)}</summary><div>${html}</div></details>`;
+}
+
+function editButton(person, field, label, opts, editable = true) {
+    if (!editable || opts.s.display?.editControls === false) return '';
+    const title = `Изменить: ${label}`;
+    return `<button type="button" class="mi-act mi-field-edit" data-mi-act="edit-field" data-mi-person="${esc(person.id)}" data-mi-field="${esc(field)}" title="${esc(title)}" aria-label="${esc(title)}">${icon('fa-pen')}</button>`;
+}
+
+function changeEntries(person, key, state) {
+    const entries = Array.isArray(person.changes?.[key]) ? person.changes[key].filter((entry) => entry && typeof entry === 'object') : [];
+    if (entries.length) return entries.slice(0, 12);
+    if (key === 'money') {
+        const tx = (state?.tx ?? []).filter((t) => t.who === person.name || t.who === person.id);
+        if (tx.length) return tx.slice(0, 12).map((t) => ({ kind: 'event', delta: t.amount, reason: t.note || 'Операция без описания' }));
+    }
+    const diff = key === 'aff' ? person.affDiff : person.diff?.[key];
+    if (Number.isFinite(diff) && diff !== 0) return [{ kind: 'event', delta: diff, reason: 'Изменение сохранено; причина для этого ответа не указана.' }];
+    return [];
+}
+
+function reasonText(person, key, state) {
+    const entries = changeEntries(person, key, state);
+    return entries.length ? entries.map((e) => `${CHANGE_KINDS[e.kind] || 'Изменение'}${Number.isFinite(e.delta) ? ` ${formatSigned(e.delta)}` : ''}: ${String(e.reason || 'Причина не указана.').slice(0, 500)}`).join('\n')
+        : 'Нет сохранённых изменений для этого ответа. Старые сообщения могут не содержать причин.';
+}
+
+function reasonBody(person, key, state) {
+    const entries = changeEntries(person, key, state);
+    if (!entries.length) return '<div class="mi-change-empty">Нет сохранённых изменений для этого ответа. В старых сообщениях причины могли не записываться.</div>';
+    return '<ul class="mi-change-list">' + entries.map((e) => `<li><span class="mi-change-kind">${esc(CHANGE_KINDS[e.kind] || 'Изменение')}</span>`
+        + (Number.isFinite(e.delta) ? `<b class="${e.delta > 0 ? 'mi-up' : e.delta < 0 ? 'mi-down' : 'mi-muted'}">${esc(formatSigned(e.delta))}</b>` : '')
+        + `<span>${esc(String(e.reason || 'Причина не указана.').slice(0, 500))}</span>`
+        + (Number.isFinite(e.from) && Number.isFinite(e.to) ? `<span class="mi-change-range">${esc(e.from)} → ${esc(e.to)}</span>` : '') + '</li>').join('') + '</ul>';
+}
+
+function statRow(person, key, value, diff, view, crit, opts, state, editable) {
+    value = Math.round(Math.min(100, Math.max(0, Number(value) || 0)));
+    const def = key === 'excitement' ? EMOTIONAL : STAT_DEFS[key];
+    if (!def) return '';
+    const title = `${def.label}: ${value}%.\n${key === 'excitement' ? 'Радость, азарт и предвкушение; не сексуальная страсть.\n' : ''}${reasonText(person, key, state)}`;
+    return `<div class="mi-stat${view === 'chips' ? ' mi-stat-chip' : ''}${crit ? ' mi-crit' : ''}" data-mi-stat="${esc(key)}">`
+        + `<details class="mi-stat-change" data-mi-sec="change:${esc(person.id)}:${esc(key)}"><summary title="${esc(title)}">`
+        + `<span class="mi-stat-label">${icon(def.icon)}${esc(def.label)}</span>`
+        + (view === 'chips' ? '' : `<span class="mi-bar"><span class="mi-bar-fill mi-stat-${esc(key)}" style="width:${value}%"></span></span>`)
+        + `<span class="mi-stat-val">${value}%${delta(diff)}${icon('fa-angle-down')}</span></summary>`
+        + `<div class="mi-change-body">${reasonBody(person, key, state)}</div></details>`
+        + editButton(person, key, def.label, opts, editable) + '</div>';
+}
+
+function textField(p, key, label, glyph, value, opts, editable, { thought = false } = {}) {
+    const text = value || 'Не указано';
+    return `<div class="mi-pulse-field${thought ? ' mi-thought' : ''}"><span class="mi-field-text">${icon(glyph)}<span class="mi-field-caption">${esc(label)}:</span> ${esc(text)}</span>${editButton(p, key, label, opts, editable)}</div>`;
+}
+
+function moneyField(p, opts, state, editable) {
+    const money = p.money === null || p.money === undefined ? 'Не указано' : formatMoney(p.money, opts.s.modules.sims.currency);
+    return `<div class="mi-pulse-field mi-money"><details class="mi-stat-change" data-mi-sec="change:${esc(p.id)}:money"><summary title="${esc(reasonText(p, 'money', state))}"><span class="mi-field-text">${icon('fa-wallet')}Деньги</span><span class="mi-stat-val">${esc(money)}${icon('fa-angle-down')}</span></summary><div class="mi-change-body">${reasonBody(p, 'money', state)}</div></details>${editButton(p, 'money', 'Деньги', opts, editable)}</div>`;
+}
+
+function personCard(p, opts, warnings, { showRel = false, editable = true, state } = {}) {
+    const tracked = trackingFor(p, opts.s);
+    if (tracked.detail === 'off') return '';
+    const fields = tracked.fields;
     const view = opts.s.modules.sims.view;
     const crit = new Set(warnings.filter((w) => w.id === p.id).map((w) => w.stat));
     const roleIcon = p.role === 'user' ? 'fa-user' : p.role === 'npc' ? 'fa-user-group' : 'fa-user-tie';
     let h = `<div class="mi-person mi-role-${esc(p.role)}">`;
     h += `<div class="mi-name">${icon(roleIcon)}<span>${esc(p.name)}</span>${p.role === 'npc' ? '<span class="mi-badge">NPC</span>' : ''}</div>`;
-    if (p.stats && opts.stats.length) {
+    if (fields.stats && p.stats && opts.stats.length) {
         const keys = opts.stats.filter((k) => p.stats[k] !== undefined);
         if (keys.length) {
-            h += `<div class="${view === 'chips' ? 'mi-chips' : 'mi-stats'}">`;
-            for (const k of keys) h += statRow(k, p.stats[k], p.diff?.[k], view, crit.has(k));
-            h += '</div>';
+            const rows = keys.map((k) => statRow(p, k, p.stats[k], p.diff?.[k], view, crit.has(k), opts, state, editable)).join('');
+            h += pulseSection(p, 'stats', 'Состояние', `<div class="${view === 'chips' ? 'mi-chips' : 'mi-stats'}">${rows}</div>`, opts);
         }
     }
-    const tags = [];
-    if (p.mood) tags.push(`<span class="mi-tag">${icon('fa-masks-theater')}${esc(p.mood)}</span>`);
-    if (Number.isFinite(p.excitement) && p.excitement > 0) tags.push(`<span class="mi-tag mi-excitement" title="Радость, азарт и эмоциональная энергия; отдельно от сексуального возбуждения">${icon('fa-sparkles')}Эмоциональный подъём: ${Math.round(Math.min(100, Math.max(0, p.excitement)))}%</span>`);
-    if (p.outfit) tags.push(`<span class="mi-tag">${icon('fa-shirt')}${esc(p.outfit)}</span>`);
-    if (tags.length) h += `<div class="mi-tags">${tags.join('')}</div>`;
-    if (showRel && typeof p.aff === 'number') h += affBar(p, opts);
+    if (fields.stats) h += pulseSection(p, 'excitement', 'Эмоциональное возбуждение', statRow(p, 'excitement', p.excitement ?? 0, p.excitementDiff, view, false, opts, state, editable), opts);
+    if (fields.mood && (p.mood || editable)) h += pulseSection(p, 'mood', 'Настроение', textField(p, 'mood', 'Настроение', 'fa-masks-theater', p.mood, opts, editable), opts);
+    if (fields.outfit && (p.outfit || editable)) h += pulseSection(p, 'outfit', 'Одежда', textField(p, 'outfit', 'Одежда', 'fa-shirt', p.outfit, opts, editable), opts);
+    if (fields.money && opts.s.modules.sims.showMoney) h += pulseSection(p, 'money', 'Деньги', moneyField(p, opts, state, editable), opts);
+    if (showRel && fields.relations && typeof p.aff === 'number') h += affBar(p, opts);
     const showUserThought = opts.s.modules.sims.userThoughts && (!opts.on.relations || opts.s.modules.relations.thoughts !== false);
-    if (p.thought && (p.role !== 'user' || showUserThought)) h += `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>`;
+    if (fields.thought && (p.thought || editable) && (p.role !== 'user' || showUserThought)) h += pulseSection(p, 'thought', 'Мысли', textField(p, 'thought', 'Мысли', 'fa-comment-dots', p.thought, opts, editable, { thought: true }), opts);
+    if (opts.on.pocket && fields.pocket && state) {
+        const items = state.pockets?.[p.id] ?? [];
+        const text = items.length ? items.map((x) => x.name).join(' · ') : 'Пока пусто';
+        const summary = `<div class="mi-pocket-summary">${icon('fa-bag-shopping')}<span><b>Кармашек:</b> ${esc(text)}</span></div>`;
+        h += pulseSection(p, 'pocket', 'Кармашек', summary, opts);
+    }
     h += '</div>';
     return h;
 }
@@ -81,34 +149,41 @@ function personCard(p, opts, warnings, { showRel = false } = {}) {
 function profileSection(state, people, opts) {
     const cfg = opts.s.modules.sims;
     const rows = people.map((p) => {
+        const tracked = trackingFor(p, opts.s);
+        if (tracked.detail === 'off' || !tracked.fields.profile) return '';
         const pr = p.profile ?? {};
         const items = [];
         if (cfg.showProfile) {
-            if (pr.birthday) items.push(`<div>${icon('fa-cake-candles')}<span class="mi-k">д/р</span>${esc(pr.birthday)}</div>`);
-            if (pr.zodiac) items.push(`<div>${icon('fa-star')}<span class="mi-k">знак</span>${esc(pr.zodiac)}</div>`);
+            items.push(`<div class="mi-profile-line">${icon('fa-cake-candles')}<span class="mi-k">д/р</span><span>${esc(pr.birthday || 'Не указано')}</span>${editButton(p, 'profile.birthday', 'День рождения', opts)}</div>`);
+            items.push(`<div class="mi-profile-line">${icon('fa-star')}<span class="mi-k">знак</span><span>${esc(pr.zodiac || 'Не указано')}</span>${editButton(p, 'profile.zodiac', 'Знак зодиака', opts)}</div>`);
             if (pr.mbti) {
                 const code = String(pr.mbti).match(/\b([IE][NS][TF][JP])\b/i)?.[1]?.toUpperCase();
                 if (code) {
                     const desc = MBTI_DESCRIPTION[code];
-                    items.push(`<details class="mi-mbti"><summary title="${esc(desc)}">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>${esc(code)} · ${esc(MBTI[code])}</span></summary><p class="mi-mbti-description">${esc(desc)}</p></details>`);
+                    items.push(`<div class="mi-profile-line"><details class="mi-mbti"><summary title="${esc(desc)}">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>${esc(code)} · ${esc(MBTI[code])}</span></summary><p class="mi-mbti-description">${esc(desc)}</p></details>${editButton(p, 'profile.mbti', 'MBTI', opts)}</div>`);
                 } else {
-                    items.push(`<div>${icon('fa-brain')}<span class="mi-k">MBTI</span>${esc(pr.mbti)}</div>`);
+                    items.push(`<div class="mi-profile-line">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>${esc(pr.mbti)}</span>${editButton(p, 'profile.mbti', 'MBTI', opts)}</div>`);
                 }
             }
-        }
-        if (cfg.showMoney && p.money !== null && p.money !== undefined) {
-            items.push(`<div class="mi-money">${icon('fa-wallet')}<span class="mi-k">деньги</span>${esc(formatMoney(p.money, cfg.currency))}</div>`);
+            if (!pr.mbti) items.push(`<div class="mi-profile-line">${icon('fa-brain')}<span class="mi-k">MBTI</span><span>Не указано</span>${editButton(p, 'profile.mbti', 'MBTI', opts)}</div>`);
         }
         if (!items.length) return '';
         return `<div class="mi-profile"><div class="mi-profile-name">${esc(p.name)}</div>${items.join('')}</div>`;
     }).filter(Boolean);
 
     let tx = '';
-    if (cfg.showMoney && state.tx?.length) {
-        tx = '<div class="mi-tx">' + state.tx.map((t) => `<span class="mi-tx-item ${t.amount > 0 ? 'mi-up' : 'mi-down'}">${esc(formatMoney(t.amount, cfg.currency))}${t.note ? ' · ' + esc(t.note) : ''}<span class="mi-tx-who">${esc(t.who)}</span></span>`).join('') + '</div>';
+    if (cfg.showMoney && pulseMode(opts, 'money') !== 'hide' && state.tx?.length) {
+        const visible = state.tx.filter((t) => {
+            const p = people.find((x) => t.who === x.id || t.who === x.name);
+            return p && trackingFor(p, opts.s).detail !== 'off' && trackingFor(p, opts.s).fields.money;
+        });
+        if (visible.length) tx = '<div class="mi-tx">' + visible.map((t) => `<span class="mi-tx-item ${t.amount > 0 ? 'mi-up' : 'mi-down'}">${esc(formatMoney(t.amount, cfg.currency))}${t.note ? ' · ' + esc(t.note) : ''}<span class="mi-tx-who">${esc(t.who)}</span></span>`).join('') + '</div>';
     }
     if (!rows.length && !tx) return '';
-    return `<details class="mi-more"><summary>${icon('fa-circle-info')}Общая информация</summary><div class="mi-profiles">${rows.join('')}</div>${tx}</details>`;
+    const mode = pulseMode(opts, 'profile', 'collapse');
+    if (mode === 'hide') return '';
+    const body = `<div class="mi-profiles">${rows.join('')}</div>${tx}`;
+    return mode === 'collapse' ? `<details class="mi-more" data-mi-sec="profile"><summary>${icon('fa-circle-info')}Общая информация</summary>${body}</details>` : `<section class="mi-pulse-profile"><div class="mi-sub">${icon('fa-circle-info')}Общая информация</div>${body}</section>`;
 }
 
 // ---------------------------------------------------------------- отношения
@@ -118,14 +193,14 @@ function affBar(p, opts) {
     const pos = (v + 100) / 2;
     const U = opts.userName || 'User';
     return `<div class="mi-aff" title="Симпатия к ${esc(U)}: ${v} (от −100 до 100)">`
-        + `<div class="mi-aff-head"><span>${icon('fa-heart')}${esc(p.rel || 'отношение')}</span><span class="mi-aff-val">${v > 0 ? '+' : ''}${v}${delta(p.affDiff)}</span></div>`
+        + `<details class="mi-aff-changes" data-mi-sec="change:${esc(p.id)}:aff"><summary class="mi-aff-head" title="${esc(reasonText(p, 'aff'))}"><span>${icon('fa-heart')}${esc(p.rel || 'отношение')}</span><span class="mi-aff-val">${v > 0 ? '+' : ''}${v}${delta(p.affDiff)}${icon('fa-angle-down')}</span></summary><div class="mi-change-body">${reasonBody(p, 'aff')}</div></details>`
         + `<div class="mi-aff-track"><span class="mi-aff-mark" style="left:${pos}%"></span></div>`
         + '</div>';
 }
 
 function relationsPane(state, opts) {
     const scene = new Set(state.scene ?? []);
-    const people = People.sortPeople(Object.values(state.people ?? {}).filter((p) => p.role !== 'user' && typeof p.aff === 'number'));
+    const people = People.sortPeople(Object.values(state.people ?? {}).filter((p) => p.role !== 'user' && typeof p.aff === 'number' && trackingFor(p, opts.s).detail !== 'off' && trackingFor(p, opts.s).fields.relations));
     if (!people.length) return '';
     const simsShowsThoughts = opts.on.sims && opts.s.modules.sims.variant !== 'lite';
     // Основная пара всегда выше NPC, даже если персонаж временно вне сцены.
@@ -133,9 +208,9 @@ function relationsPane(state, opts) {
     const away = people.filter((p) => p.role !== 'char' && !scene.has(p.id));
     const card = (p) => `<div class="mi-person mi-rel-card">`
         + `<div class="mi-name">${icon(p.role === 'npc' ? 'fa-user-group' : 'fa-user-tie')}<span>${esc(p.name)} ↔ ${esc(opts.userName || 'User')}</span>${scene.has(p.id) ? '' : '<span class="mi-badge">не в сцене</span>'}</div>`
-        + (!simsShowsThoughts && p.outfit && scene.has(p.id) ? `<div class="mi-tags"><span class="mi-tag">${icon('fa-shirt')}${esc(p.outfit)}</span></div>` : '')
+        + (!simsShowsThoughts && trackingFor(p, opts.s).fields.outfit && p.outfit && scene.has(p.id) ? `<div class="mi-tags"><span class="mi-tag">${icon('fa-shirt')}${esc(p.outfit)}</span></div>` : '')
         + affBar(p, opts)
-        + (!simsShowsThoughts && p.thought && scene.has(p.id) ? `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>` : '')
+        + (!simsShowsThoughts && trackingFor(p, opts.s).fields.thought && p.thought && scene.has(p.id) ? `<div class="mi-thought">${icon('fa-comment-dots')}${esc(p.thought)}</div>` : '')
         + '</div>';
     let h = `<div class="mi-people">${inScene.map(card).join('')}</div>`;
     if (away.length) h += `<details class="mi-more"><summary>${icon('fa-users')}Не в сцене (${away.length})</summary><div class="mi-people">${away.map(card).join('')}</div></details>`;
@@ -195,6 +270,11 @@ function worldPane(state, opts) {
         h += `<div class="mi-sub">${icon('fa-comments')}Слухи</div><ul class="mi-list mi-rumors">`
             + w.rumors.map((r) => `<li>«${esc(r.text)}»</li>`).join('')
             + '</ul>';
+    }
+    if (cfg.threads !== false && w.threads?.length) {
+        h += `<section class="mi-threads"><div class="mi-sub">${icon('fa-link')}Нити сюжета</div><ul class="mi-thread-list">`
+            + w.threads.map((thread) => `<li class="mi-thread"><div class="mi-thread-main"><span>${esc(thread.text)}</span><button type="button" class="mi-act mi-item-action" data-mi-act="thread-dismiss" data-mi-thread="${esc(thread.id)}" title="Убрать нить сюжета" aria-label="Убрать нить сюжета: ${esc(thread.text)}">${icon('fa-xmark')}</button></div>`
+                + (thread.endings?.length ? `<details class="mi-thread-endings" data-mi-sec="thread:${esc(thread.id)}"><summary>Возможные завершения</summary><ul>${thread.endings.slice(0, 5).map((ending) => `<li>${esc(ending)}</li>`).join('')}</ul><div class="mi-muted mi-small">Варианты, а не предрешённые события.</div></details>` : '') + '</li>').join('') + '</ul></section>';
     }
     if (!cfg.twists || !w.twist) {
         if (w.lastTwist && cfg.twists) h += `<div class="mi-muted mi-small">${icon('fa-clock-rotate-left')}Последний поворот: ${esc(w.lastTwist)}</div>`;
@@ -318,6 +398,29 @@ export function renderPhone(phone, opts, state) {
     return `<div class="mi-phones">${phone.map((p) => phoneBlock(p, opts, state)).join('')}</div>`;
 }
 
+// ---------------------------------------------------------------- важные вещи
+
+function pocketPane(state, opts) {
+    const known = People.sortPeople(Object.values(state.people ?? {}));
+    const owners = known.filter((p) => {
+        const track = trackingFor(p, opts.s);
+        return track.detail !== 'off' && track.fields.pocket
+            && (p.role !== 'npc' || track.detail === 'full' || (state.pockets?.[p.id]?.length ?? 0) > 0);
+    });
+    if (!owners.length) return '';
+    const limit = Math.min(20, Math.max(1, Math.round(Number(opts.s.modules.pocket?.maxItems) || 5)));
+    const action = (name, label, glyph, person, item) => `<button type="button" class="mi-act mi-item-action" data-mi-act="${name}" data-mi-person="${esc(person.id)}"${item ? ` data-mi-item="${esc(item.id)}"` : ''} title="${esc(label)}" aria-label="${esc(label)}">${icon(glyph)}</button>`;
+    return '<div class="mi-pockets"><div class="mi-muted mi-small">Значимые вещи при себе — подарки, улики, памятные мелочи.</div>'
+        + owners.map((p) => {
+            const items = (state.pockets?.[p.id] ?? []).slice(0, limit);
+            let h = `<section class="mi-person mi-pocket-owner"><div class="mi-pocket-heading"><div class="mi-name">${icon('fa-bag-shopping')}<span>${esc(p.name)}</span></div><span class="mi-pocket-count">${items.length}/${limit}</span>`
+                + (items.length < limit ? action('pocket-add', `Добавить вещь: ${p.name}`, 'fa-plus', p) : '') + '</div>';
+            if (!items.length) h += '<div class="mi-muted mi-small">Пока пусто. Можно добавить свою вещь.</div>';
+            else h += '<ul class="mi-pocket-list">' + items.map((item) => `<li><div class="mi-pocket-item"><span class="mi-pocket-name">${esc(item.name)}</span><span class="mi-item-actions">${action('pocket-edit', `Изменить вещь: ${item.name}`, 'fa-pen', p, item)}${action('pocket-remove', `Убрать вещь: ${item.name}`, 'fa-xmark', p, item)}</span></div>${item.note ? `<div class="mi-pocket-note">${esc(item.note)}</div>` : ''}</li>`).join('') + '</ul>';
+            return h + '</section>';
+        }).join('') + '</div>';
+}
+
 // ---------------------------------------------------------------- сборка
 
 /** Список вкладок, у которых есть что показать. */
@@ -326,7 +429,7 @@ function buildTabs(data, opts) {
     const tabs = [];
     const cfg = opts.s.modules;
     if (state) {
-        const people = People.scenePeople(state);
+        const people = People.scenePeople(state).filter((p) => trackingFor(p, opts.s).detail !== 'off');
         const warnings = People.collectWarnings(state, opts);
         const simsFull = opts.on.sims && cfg.sims.variant !== 'lite';
         if (simsFull && people.length) {
@@ -335,13 +438,13 @@ function buildTabs(data, opts) {
             if (main.length) {
                 tabs.push({
                     key: 'chars', label: 'Пульс', icon: 'fa-heart-pulse',
-                    html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${main.map((p) => personCard(p, opts, warnings)).join('')}</div>${profileSection(state, people.filter((p) => p.role !== 'npc'), opts)}`,
+                    html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${main.map((p) => personCard(p, opts, warnings, { state })).join('')}</div>${profileSection(state, main, opts)}`,
                 });
             }
             if (cfg.sims.npcTab && npcs.length) {
                 tabs.push({
                     key: 'npc', label: 'Окружение', icon: 'fa-user-group',
-                    html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${npcs.map((p) => personCard(p, opts, warnings, { showRel: opts.on.relations })).join('')}</div>`,
+                    html: `<div class="mi-people mi-view-${esc(cfg.sims.view)}">${npcs.map((p) => personCard(p, opts, warnings, { showRel: opts.on.relations, editable: false, state })).join('')}</div>`,
                 });
             }
         }
@@ -349,7 +452,7 @@ function buildTabs(data, opts) {
             const html = relationsPane(state, opts);
             if (html) tabs.push({ key: 'rel', label: 'Связи', icon: 'fa-people-arrows', html });
         }
-        if (opts.on.slowburn && state.slow) tabs.push({ key: 'slow', label: 'Сближение', icon: 'fa-hourglass-half', html: slowPane(state, opts) });
+        if (opts.on.slowburn && state.slow) tabs.push({ key: 'slow', label: 'Slow burn', icon: 'fa-heart', html: slowPane(state, opts) });
         if (opts.on.world) {
             const html = worldPane(state, opts);
             if (html) tabs.push({ key: 'world', label: 'Сюжет', icon: 'fa-earth-europe', html });
@@ -362,8 +465,16 @@ function buildTabs(data, opts) {
             const html = bodyPane(state, opts);
             if (html) tabs.push({ key: 'body', label: 'Следы', icon: 'fa-band-aid', html });
         }
+        if (opts.on.pocket) {
+            const html = pocketPane(state, opts);
+            if (html) tabs.push({ key: 'pocket', label: 'Кармашек', icon: 'fa-bag-shopping', html });
+        }
     }
-    return tabs;
+    const order = Array.isArray(opts.s.display?.tabOrder) ? opts.s.display.tabOrder : [];
+    return tabs.sort((a, b) => {
+        const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
+        return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi);
+    });
 }
 
 function header(state, { pending, actions }) {
@@ -399,7 +510,7 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
 
     let actions = '';
     actions += `<i class="fa-solid fa-rotate mi-act" data-mi-act="regen" title="Пересчитать инфоблок этого сообщения отдельным запросом"></i>`;
-    if (state) actions += `<i class="fa-solid fa-pen mi-act" data-mi-act="edit" title="Исправить значения вручную"></i>`;
+    if (state) actions += `<i class="fa-solid fa-pen mi-act" data-mi-act="edit" title="Исправить данные инфоблока целиком"></i>`;
     if (opts.on.diary && !data?.diary) actions += `<i class="fa-solid fa-book-open mi-act" data-mi-act="diary" title="Добавить личную заметку"></i>`;
     if (tabs.length) actions += `<i class="fa-solid ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} mi-act" data-mi-act="toggle" title="Свернуть / развернуть"></i>`;
 
@@ -416,7 +527,7 @@ export function renderPanel({ data, opts, pending = false, isLast = false, colla
     let h = `<div class="mi-panel${collapsed ? ' mi-collapsed' : ''} mi-layout-${esc(s.layout)}">`;
     h += header(state, { pending, actions });
     if (!collapsed && opts.on.relations && state) {
-        const main = People.sortPeople(Object.values(state.people ?? {})).find((p) => p.role === 'char' && typeof p.aff === 'number');
+        const main = People.sortPeople(Object.values(state.people ?? {})).find((p) => p.role === 'char' && typeof p.aff === 'number' && trackingFor(p, opts.s).detail !== 'off' && trackingFor(p, opts.s).fields.relations);
         if (main) h += `<div class="mi-main-relation"><div class="mi-name">${icon('fa-heart')}<span>${esc(main.name)} ↔ ${esc(opts.userName || 'User')}</span></div>${affBar(main, opts)}</div>`;
     }
     if (err && !pending) {

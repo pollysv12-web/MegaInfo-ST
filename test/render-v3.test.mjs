@@ -47,7 +47,7 @@ test('мысли игрока скрываются сразу после отк�
     opts.s.modules.sims.userThoughts = true;
     html = panel(state(), opts);
     assert.match(html, /Тайна игрока/);
-    assert.match(html, /Эмоциональный подъём: 65%/);
+    assert.match(html, /Возбуждение: 65%/);
     opts.s.modules.relations.thoughts = false;
     assert.doesNotMatch(panel(state(), opts), /Тайна игрока/);
 });

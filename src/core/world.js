@@ -2,6 +2,14 @@
 // Всё хранится в коде и меняется маленькими шагами, поэтому ничего не «скачет».
 
 import { asArray, clamp, formatStamp, normName, parseDateTime, parseStamp, str, toNumber } from '../util.js';
+import { collectionId } from './pocket.js';
+
+export const threadLimit = (opts) => Math.round(clamp(Number(opts.s.modules.world?.threadLimit) || 6, 1, 12));
+const threadText = (value) => {
+    const text = str(value, 220);
+    return /^(?:…|\.{3})$/.test(text) ? '' : text;
+};
+const endings = (value) => [...new Set(asArray(value).map((text) => str(text, 140)).filter(Boolean))].slice(0, 3);
 
 export function stateLines(state, opts) {
     const w = state?.world;
@@ -22,6 +30,12 @@ export function stateLines(state, opts) {
         lines.push('Active rumors (NPCs may bring them up in dialogue, they spread and evolve):');
         for (const r of w.rumors) lines.push(`  [${r.id}] ${r.text}`);
     }
+    if (cfg.threads !== false && w.threads?.length) {
+        lines.push('Open story threads (remember commitments; possible endings are ideas, NOT events that already happened):');
+        for (const t of w.threads.slice(0, threadLimit(opts))) {
+            lines.push(`  [${t.id}] ${t.text}${t.endings?.length ? ' — possible outcomes: ' + t.endings.join(' / ') : ''}`);
+        }
+    }
     return lines;
 }
 
@@ -33,6 +47,7 @@ export function schema(state, opts) {
     if (cfg.plot) Object.assign(w, { plot: '…', plot_d: 1 });
     if (cfg.schedule) w.schedule = [{ who: '…', time: 'HH:MM', what: '…' }];
     if (cfg.rumors) Object.assign(w, { rumor_add: [], rumor_drop: [] });
+    if (cfg.threads !== false) Object.assign(w, { thread_add: [], thread_drop: [], thread_update: [] });
     return { world: w };
 }
 
@@ -47,6 +62,10 @@ export function rules(state, opts) {
     if (cfg.rumors) {
         const n = Number(cfg.rumorCount) || 4;
         r.push(`- world.rumor_add: new rumors/gossip that appeared in the world (0–1 per reply; up to ${n} active total, add if fewer). rumor_drop: ids of rumors that were resolved or forgotten, e.g. ["r2"]. Usually both [].`);
+    }
+    if (cfg.threads !== false) {
+        r.push(`- world.thread_add: [{"text":"an unresolved promise, planned meeting, unanswered question or event already established in the story","endings":["possible way to resolve it"]}]. Track only meaningful open threads, up to ${threadLimit(opts)} total; normally add zero or one. Never invent a promise or a completed event to fill the list.`);
+        r.push('- world.thread_drop: ["existing thread id"] only when it actually resolved in the story. world.thread_update: [{"id":"existing thread id","text":"updated wording","endings":["optional possible outcome"]}] when facts changed. Possible endings are suggestions, never a prescribed outcome, and must not be narrated as already completed. Omitted keys preserve the open threads.');
     }
     return r;
 }
@@ -74,6 +93,7 @@ export function apply(next, base, data, opts) {
         schedule: [...(prev.schedule ?? [])],
         rumors: [...(prev.rumors ?? [])],
         rumorSeq: prev.rumorSeq ?? 0,
+        threads: structuredClone(Array.isArray(prev.threads) ? prev.threads : []),
     };
     const d = data?.world && typeof data.world === 'object' ? data.world : {};
 
@@ -132,6 +152,25 @@ export function apply(next, base, data, opts) {
         }
         const n = Number(cfg.rumorCount) || 4;
         if (w.rumors.length > n) w.rumors = w.rumors.slice(-n);
+    }
+    if (cfg.threads !== false) {
+        const limit = threadLimit(opts);
+        const drop = new Set(asArray(d.thread_drop).map((id) => String(id).trim()));
+        w.threads = w.threads.filter((t) => t && typeof t === 'object' && threadText(t.text) && !drop.has(t.id)).slice(0, limit);
+        for (const change of asArray(d.thread_update).slice(0, 12)) {
+            if (!change || typeof change !== 'object') continue;
+            const t = w.threads.find((item) => item.id === str(change.id, 100));
+            if (!t) continue;
+            const text = threadText(change.text);
+            if (text) t.text = text;
+            if (Array.isArray(change.endings)) t.endings = endings(change.endings);
+        }
+        for (const change of asArray(d.thread_add).slice(0, 12)) {
+            const text = threadText(typeof change === 'string' ? change : change?.text);
+            if (!text || w.threads.some((t) => normName(t.text) === normName(text)) || w.threads.length >= limit) continue;
+            const at = [next.date, next.time].filter(Boolean).join(' ');
+            w.threads.push({ id: collectionId('t', normName(text), at), text, endings: endings(change?.endings), date: next.date || '', at });
+        }
     }
     next.world = w;
 }
