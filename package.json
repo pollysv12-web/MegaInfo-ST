@@ -1,9 +1,12 @@
 {
+  "name": "megainfo-st",
+  "version": "0.3.1",
   "type": "module",
   "private": true,
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:browser": "node test/browser/run.cjs"
+    "test:browser": "node test/browser/run.cjs",
+    "test:browser:v31": "node test/browser/run-v31.cjs"
   },
   "devDependencies": {
     "dompurify": "3.2.6",

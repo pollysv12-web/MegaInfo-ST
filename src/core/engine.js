@@ -7,6 +7,7 @@ import * as World from './world.js';
 import * as Marks from './marks.js';
 import * as Loc from './location.js';
 import * as Extras from './extras.js';
+import * as Pocket from './pocket.js';
 import { deepClone, findTagBlock, parseLooseJson, stripTagBlocks } from '../util.js';
 
 export const TAG = 'megainfo';
@@ -24,9 +25,9 @@ export function stripPlacementMarkers(text) {
 export const LEGACY_TAGS = ['sims'];
 
 /** Модули, которым нужна сцена (дата/время/место). */
-const SCENE_MODULES = ['sims', 'relations', 'world', 'marks', 'slowburn'];
+const SCENE_MODULES = ['sims', 'relations', 'world', 'marks', 'slowburn', 'pocket'];
 /** Модули-трекеры: их состояние переносится из сообщения в сообщение. */
-export const TRACKERS = ['sims', 'relations', 'slowburn', 'world', 'marks', 'location'];
+export const TRACKERS = ['sims', 'relations', 'slowburn', 'world', 'marks', 'location', 'pocket'];
 /** Модули «по ситуации»: модель сама решает, нужен ли блок. */
 export const CONTEXTUAL = ['phone', 'cards'];
 
@@ -43,6 +44,7 @@ export function stateLines(state, opts) {
     if (on.slowburn) out.push(...Slow.stateLines(state, opts));
     if (on.world && state) out.push(...World.stateLines(state, opts));
     if (on.marks && state) out.push(...Marks.stateLines(state, opts));
+    if (on.pocket && state) out.push(...Pocket.stateLines(state, opts));
     return out;
 }
 
@@ -64,6 +66,7 @@ function mergeSchema(state, request, opts) {
     if (request.has('location')) Object.assign(out, Loc.schema(state, opts));
     if (request.has('diary')) Object.assign(out, Extras.diarySchema(opts));
     if (request.has('phone')) Object.assign(out, Extras.phoneSchema(opts));
+    if (request.has('pocket')) Object.assign(out, Pocket.schema(state, opts));
     return out;
 }
 
@@ -77,6 +80,7 @@ function mergeRules(state, request, opts, prevDiary, separate) {
     if (request.has('diary')) r.push(...Extras.diaryRules(opts, prevDiary));
     if (request.has('phone')) r.push(...Extras.phoneRules(opts, { separate }));
     if (request.has('cards')) r.push(...Extras.cardRules(opts, { separate }));
+    if (request.has('pocket')) r.push(...Pocket.rules(state, opts));
     r.push(`- Keys that are not needed (or did not change, where allowed) may be omitted. All text values in ${opts.language}.`);
     return r;
 }
@@ -178,7 +182,7 @@ export function parseJsonBlock(inner) {
     return parseLooseJson(inner);
 }
 
-const DATA_KEYS = ['date', 'time', 'location', 'people', 'world', 'slowburn', 'marks', 'place', 'diary', 'phone', 'money'];
+const DATA_KEYS = ['date', 'time', 'location', 'people', 'world', 'slowburn', 'marks', 'place', 'diary', 'phone', 'money', 'pocket'];
 
 export function looksValid(data) {
     return !!data && typeof data === 'object' && DATA_KEYS.some((k) => data[k] !== undefined);
@@ -195,6 +199,8 @@ export function carryOver(base) {
     for (const p of Object.values(next.people)) {
         p.diff = {};
         p.affDiff = 0;
+        p.changes = {};
+        p.excitementDiff = 0;
     }
     if (next.world) Object.assign(next.world, { twist: '', tensionDiff: 0, progressDiff: 0 });
     if (next.slow) next.slow.diff = 0;
@@ -225,6 +231,7 @@ export function applyData({ base, fresh = true, data, request, opts }) {
     if (request.has('slowburn') && opts.on.slowburn) Slow.apply(next, base, data, opts);
     if (request.has('world') && opts.on.world) World.apply(next, base, data, opts);
     if (request.has('marks') && opts.on.marks) Marks.apply(next, base, data, opts);
+    if (request.has('pocket') && opts.on.pocket) Pocket.apply(next, base, data, opts);
 
     const place = request.has('location') ? Loc.extractPlace(data, next) : null;
     const diary = request.has('diary') ? Extras.parseDiary(data, next) : null;
@@ -234,4 +241,4 @@ export function applyData({ base, fresh = true, data, request, opts }) {
     return { state: next, place, diary, phone, issues };
 }
 
-export { Extras, Loc, Marks, People, Slow, World };
+export { Extras, Loc, Marks, People, Slow, World, Pocket };

@@ -12,6 +12,7 @@ function makeHost(kind, data, opts) {
     host.dataset.miInline = kind;
     host.dataset.miTheme = opts.s.theme;
     host.dataset.miFont = opts.s.font;
+    host.dataset.miContrast = opts.s.display?.contrast || 'normal';
     if (kind === 'phone') host.innerHTML = renderPhone(data.phone, opts, data.state);
     else {
         const card = document.createElement('span');

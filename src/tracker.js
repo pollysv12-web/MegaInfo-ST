@@ -9,14 +9,15 @@ import {
 } from './core/engine.js';
 import {
     botMessagesBetween, clearData, findPreviousState, findPreviousWith, getData, getMessage, getPlaces,
-    isBotMessage, markPlaceTry, placeTries, saveChat, savePlace, setData, setMessageText, filterDismissedMarks,
+    isBotMessage, markPlaceTry, placeTries, saveChat, savePlace, setData, setMessageText, filterDismissedMarks, filterManualCollections,
 } from './store.js';
 import { cardContext, chatHistory, errorText, recentStory, sideRequest } from './request.js';
 import * as Log from './log.js';
 import { stripAnyHtml, stripTagBlocks } from './util.js';
+import { reapplyPulseEdits } from './manual.js';
 
 const ctx = () => SillyTavern.getContext();
-const SCENE = ['sims', 'relations', 'world', 'marks', 'slowburn'];
+const SCENE = ['sims', 'relations', 'world', 'marks', 'slowburn', 'pocket'];
 
 /** Сообщения, для которых сейчас идёт отдельный запрос: id -> Promise */
 export const pending = new Map();
@@ -92,8 +93,9 @@ export function computeDue(targetId, opts = buildOpts()) {
     const trackers = new Set();
     for (const k of SCENE) {
         if (!opts.on[k]) continue;
-        if (k === 'sims' || k === 'slowburn' || k === 'relations' || k === 'world' || k === 'marks') {
-            const every = Math.max(1, Number(opts.s.modules[k].every) || 1);
+        if (k === 'pocket' && opts.s.modules.pocket?.auto === false) continue;
+        if (TRACKERS.includes(k)) {
+            const every = Math.max(1, Number(opts.s.modules[k]?.every) || 1);
             if (every === 1 || since(targetId, (d) => d.upd?.includes(k)) >= every) trackers.add(k);
         }
     }
@@ -153,7 +155,7 @@ export function injectionFor(targetId) {
 
 function storeResult(id, message, res, { scene }) {
     if (scene) {
-        setData(message, 'state', filterDismissedMarks(res.state));
+        setData(message, 'state', reapplyPulseEdits(message, filterManualCollections(filterDismissedMarks(res.state), id)));
         const upd = [...new Set([...(getData(message)?.upd ?? []), ...res.upd])];
         setData(message, 'upd', upd);
         setData(message, 'err', undefined);
@@ -422,6 +424,6 @@ export function runSeparate(messageId, modules, o = {}) {
 
 /** Все модули для кнопки «перегенерировать». */
 export function allTrackerModules(opts = buildOpts()) {
-    const list = TRACKERS.filter((k) => opts.on[k]);
+    const list = TRACKERS.filter((k) => opts.on[k] && (k !== 'pocket' || opts.s.modules.pocket?.auto !== false));
     return new Set(list);
 }

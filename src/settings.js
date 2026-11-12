@@ -1,29 +1,30 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.3.0-ui.1';
+export const VERSION = '0.3.1';
 
-const SETTINGS_VERSION = 3;
+const SETTINGS_VERSION = 4;
 
 /** Статы sims. decay — изменение за 2 часа времени в ролевой. */
 export const STAT_DEFS = {
     food: { label: 'Сытость', icon: 'fa-utensils', decay: -10, critLow: 20 },
     hygiene: { label: 'Гигиена', icon: 'fa-droplet', decay: -5, critLow: 25 },
     energy: { label: 'Бодрость', icon: 'fa-bolt', decay: -15, critLow: 15 },
-    arousal: { label: 'Возбуждение', icon: 'fa-fire', decay: -10, critHigh: 85 },
+    arousal: { label: 'Страсть', icon: 'fa-fire', decay: -10, critHigh: 85 },
 };
 
 /** Порядок и подписи модулей (используется в настройках, быстром меню и вкладках). */
 export const MODULE_LIST = [
     { key: 'sims', label: 'Пульс', icon: 'fa-heart-pulse' },
     { key: 'relations', label: 'Связи', icon: 'fa-people-arrows' },
-    { key: 'slowburn', label: 'Сближение', icon: 'fa-hourglass-half' },
+    { key: 'slowburn', label: 'Slow burn', icon: 'fa-hourglass-half' },
     { key: 'world', label: 'Сюжет', icon: 'fa-earth-europe' },
     { key: 'location', label: 'Места', icon: 'fa-map-location-dot' },
     { key: 'marks', label: 'Следы', icon: 'fa-band-aid' },
     { key: 'diary', label: 'Заметки', icon: 'fa-book-open' },
     { key: 'phone', label: 'На связи', icon: 'fa-mobile-screen' },
     { key: 'cards', label: 'Детали', icon: 'fa-wand-magic-sparkles' },
+    { key: 'pocket', label: 'Кармашек', icon: 'fa-briefcase' },
 ];
 
 export const DEFAULTS = {
@@ -34,7 +35,7 @@ export const DEFAULTS = {
 
     // ---- вид
     theme: 'tavern',          // tavern | glass | noir | parchment | pastel | minimal | custom
-    custom: { accent: '#c79bd8', bg: '#1d1a24', text: '#ebe7f0' },
+    custom: { accent: '#ed91ad', bg: '#241b23', text: '#f7e7ee' },
     font: 'inherit',          // inherit | sans | serif | mono | rounded
     layout: 'tabs',           // tabs | stack
     placement: 'top',         // top | bottom
@@ -43,6 +44,18 @@ export const DEFAULTS = {
     lastTab: '',
     hideWhileStreaming: true,
     customCss: '',
+    display: {
+        fontSize: 100,
+        contrast: 'normal',
+        tabOrder: ['chars', 'npc', 'rel', 'slow', 'world', 'place', 'body', 'pocket'],
+        pulse: { stats: 'show', mood: 'show', excitement: 'show', outfit: 'show', thought: 'show', money: 'show', profile: 'collapse', pocket: 'show' },
+        editControls: true,
+    },
+    tracking: {
+        roles: { char: 'full', user: 'full', npc: 'short' },
+        pinnedNpc: '',
+        overrides: {},
+    },
 
     // ---- как получать блоки
     mode: 'auto',             // inline | separate | auto
@@ -70,6 +83,7 @@ export const DEFAULTS = {
             showProfile: true,
             birthdays: true,      // учитывать д/р в сцене, недостающие даты назначаются один раз
             userThoughts: false,  // разрешить модели писать внутренние мысли {{user}}
+            excitement: true,     // эмоциональное возбуждение; не сексуальная страсть
             currency: '₽',
             stats: {
                 food: { on: true, decay: -10 },
@@ -105,6 +119,8 @@ export const DEFAULTS = {
             schedule: true,
             rumors: true,
             rumorCount: 4,
+            threads: true,
+            threadLimit: 6,
         },
         location: {
             enabled: true,
@@ -140,6 +156,12 @@ export const DEFAULTS = {
             enabled: false,
             when: 'context',      // context | every
             maxChars: 6000,
+        },
+        pocket: {
+            enabled: true,
+            every: 1,
+            auto: true,
+            maxItems: 5,
         },
     },
 };
@@ -178,13 +200,20 @@ function migrate(s) {
         s.theme = { glass: 'glass', minimal: 'minimal', solid: 'tavern' }[s.style] ?? 'tavern';
         delete s.style;
     }
-    if ((Number(s.schemaVersion) || 0) < SETTINGS_VERSION) {
+    if (!s.tracking?.roles?.npc && s.modules?.sims?.npcDetail) {
+        s.tracking ??= {};
+        s.tracking.roles ??= {};
+        s.tracking.roles.npc = s.modules.sims.npcDetail === 'full' ? 'full' : 'short';
+    }
+    if ((Number(s.schemaVersion) || 0) < 3) {
         // В 0.2 возбуждение росло само (+10/2 ч). Один раз меняем только
         // положительную скорость; выбранные пользователем 0 и спад сохраняем.
         const arousal = s.modules?.sims?.stats?.arousal;
         if (arousal && Number(arousal.decay) > 0) arousal.decay = -10;
-        s.schemaVersion = SETTINGS_VERSION;
     }
+    // Version 4 adds display/tracking/pocket defaults without reinterpreting
+    // saved sexual arousal values or resetting existing custom settings.
+    if ((Number(s.schemaVersion) || 0) < SETTINGS_VERSION) s.schemaVersion = SETTINGS_VERSION;
     return s;
 }
 

@@ -3,7 +3,8 @@
 
 import { MODULE, VERSION, getSettings, saveSettings } from './src/settings.js';
 import { OUR_TAGS } from './src/core/engine.js';
-import { dismissMark, getData, getMessage, isBotMessage, lastBotMessageId, saveChat, setData } from './src/store.js';
+import { addPocketItem, dismissMark, dismissThread, getData, getMessage, isBotMessage, lastBotMessageId, saveChat, setData, updatePocket } from './src/store.js';
+import { editPulseField, PULSE_FIELDS, pulseValue } from './src/manual.js';
 import {
     allTrackerModules, blockingJobs, buildOpts, cleanForPrompt, clearPending, handleEdited, handleReceived, injectionFor, pending, pendingDiary, runSeparate,
     setChangeListener,
@@ -89,10 +90,11 @@ function applyDynamicStyles() {
     let $style = $('#megainfo-dynamic-css');
     if (!$style.length) $style = $('<style id="megainfo-dynamic-css"></style>').appendTo('head');
     const { accent, bg, text } = s.custom ?? {};
+    const fontScale = Math.min(150, Math.max(75, Number(s.display?.fontSize) || 100)) / 100;
     const custom = `.mi-host[data-mi-theme="custom"]{--mi-accent:${accent};--mi-bg:${bg};--mi-text:${text};--mi-em:${text};`
         + `--mi-card:color-mix(in srgb,${text} 5%,transparent);--mi-line:color-mix(in srgb,${text} 15%,transparent);`
         + `--mi-muted:color-mix(in srgb,${text} 60%,transparent);--mi-shadow:0 4px 16px #0004;}`;
-    $style.text(custom + '\n' + String(s.customCss ?? ''));
+    $style.text(`.mi-host{--mi-font-scale:${fontScale}}\n` + custom + '\n' + String(s.customCss ?? ''));
 }
 
 function render(messageId) {
@@ -116,7 +118,7 @@ function render(messageId) {
         const content = data?.diary ? renderDiary(data.diary, opts)
             : '<div class="mi-diary mi-muted" role="status"><i class="fa-solid fa-spinner fa-spin"></i> Собираю заметки…</div>';
         const $diary = $('<div class="mi-host mi-diary-host"></div>')
-            .attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(content);
+            .attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font, 'data-mi-contrast': s.display?.contrast || 'normal' }).html(content);
         if (s.modules.diary.placement === 'top') $text.before($diary);
         else $text.after($diary);
     }
@@ -128,7 +130,7 @@ function render(messageId) {
     });
     if (!html) return;
 
-    const $host = $('<div class="mi-host mi-info-host"></div>').attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font }).html(html);
+    const $host = $('<div class="mi-host mi-info-host"></div>').attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font, 'data-mi-contrast': s.display?.contrast || 'normal' }).html(html);
     if (s.placement === 'bottom') $block.children('.mi-diary-host').length && s.modules.diary.placement !== 'top'
         ? $block.children('.mi-diary-host').after($host) : $text.after($host);
     else $block.children('.mi-diary-host').length && s.modules.diary.placement === 'top'
@@ -191,13 +193,58 @@ async function editState(messageId) {
     }
 }
 
-function onActionClick(event) {
+async function onActionClick(event) {
     event.preventDefault();
     event.stopPropagation();
     const $btn = $(event.currentTarget);
     const id = Number($btn.closest('.mes').attr('mesid'));
     if (!Number.isFinite(id)) return;
     const act = $btn.data('mi-act');
+    if (act === 'edit-field') {
+        const personId = String($btn.attr('data-mi-person') ?? '');
+        const field = String($btn.attr('data-mi-field') ?? '');
+        const person = getData(getMessage(id))?.state?.people?.[personId];
+        if (!person || !Object.hasOwn(PULSE_FIELDS, field)) return;
+        const value = await ctx().callGenericPopup(
+            `<b>${PULSE_FIELDS[field]}</b><br><small>Правка сохранится в этом ответе. Новые события будут считаться от актуального состояния.</small>`,
+            ctx().POPUP_TYPE.INPUT, String(pulseValue(person, field) ?? ''),
+            { rows: field === 'thought' ? 4 : 1, okButton: 'Сохранить', cancelButton: 'Отмена' },
+        );
+        if (value === false || value === null || value === undefined) return;
+        try {
+            editPulseField(id, personId, field, value);
+            await saveChat();
+            render(id);
+        } catch (e) { toastr.warning(e.message, 'MegaInfo'); }
+        return;
+    }
+    if (act === 'pocket-add' || act === 'pocket-edit') {
+        const personId = String($btn.attr('data-mi-person') ?? '');
+        const itemId = String($btn.attr('data-mi-item') ?? '');
+        const state = getData(getMessage(id))?.state;
+        if (!state?.people?.[personId]) return;
+        const item = state.pockets?.[personId]?.find((i) => i.id === itemId);
+        if (act === 'pocket-edit' && !item) return;
+        const $form = $('<div class="mi-pocket-editor"><h3>Кармашек</h3><label>Значимая вещь<input class="text_pole" data-pocket-name maxlength="120"></label><label>Короткая заметка<textarea class="text_pole" data-pocket-note rows="2" maxlength="500"></textarea></label></div>');
+        $form.find('[data-pocket-name]').val(item?.name ?? '');
+        $form.find('[data-pocket-note]').val(item?.note ?? '');
+        const result = await ctx().callGenericPopup($form, ctx().POPUP_TYPE.TEXT, '', { okButton: 'Сохранить', cancelButton: 'Отмена' });
+        if (!result) return;
+        const patch = { name: String($form.find('[data-pocket-name]').val()).trim(), note: String($form.find('[data-pocket-note]').val()).trim() };
+        if (!patch.name) { toastr.warning('Введите название вещи', 'Кармашек'); return; }
+        const changed = act === 'pocket-add' ? addPocketItem(id, personId, patch) : updatePocket(id, personId, itemId, patch);
+        if (changed) { await saveChat(); renderAll(); }
+        else toastr.warning('Не удалось сохранить вещь. Проверьте лимит кармашка в настройках.', 'MegaInfo');
+        return;
+    }
+    if (act === 'pocket-remove') {
+        if (updatePocket(id, String($btn.attr('data-mi-person') ?? ''), String($btn.attr('data-mi-item') ?? ''), null)) { await saveChat(); renderAll(); }
+        return;
+    }
+    if (act === 'thread-dismiss') {
+        if (dismissThread(id, String($btn.attr('data-mi-thread') ?? ''))) { await saveChat(); renderAll(); }
+        return;
+    }
     if (act === 'regen') runSeparate(id, allTrackerModules());
     if (act === 'diary') runSeparate(id, ['diary']);
     if (act === 'edit') editState(id);
@@ -303,7 +350,7 @@ async function init() {
     }));
     eventSource.on(E.GENERATION_ENDED, safe(() => refreshTokenStats()));
 
-    $(document).on('click', '.mi-host .mi-act', onActionClick);
+    $(document).on('click', '.mi-host .mi-act', safe(onActionClick));
     $(document).on('click', '.mi-host .mi-tab', onTabClick);
     document.addEventListener('toggle', onDetailsToggle, true);
 

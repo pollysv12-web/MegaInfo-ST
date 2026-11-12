@@ -8,9 +8,114 @@ import { buildOpts, injectionFor, allTrackerModules } from './tracker.js';
 import { exportDiary, exportJson, exportText } from './export.js';
 import { openQuickMenu } from './quick.js';
 import * as Log from './log.js';
-import { esc } from './util.js';
+import { esc, normName } from './util.js';
+import { PRESETS, applyPreset } from './presets.js';
+import { TRACKING_FIELDS, setTrackingOverride, trackingFor } from './tracking.js';
 
 let hooks = { onChange: () => {} };
+
+const TAB_LABELS = { chars: 'Пульс', npc: 'Окружение', rel: 'Связи', slow: 'Slow burn', world: 'Сюжет', place: 'Места', body: 'Следы', pocket: 'Кармашек' };
+const PULSE_LABELS = { stats: 'Потребности и страсть', mood: 'Настроение', excitement: 'Возбуждение', outfit: 'Одежда', thought: 'Мысли', money: 'Деньги', profile: 'Общая информация', pocket: 'Кармашек' };
+
+function renderOrder() {
+    const stored = getSettings().display.tabOrder;
+    const order = [...new Set([...(Array.isArray(stored) ? stored : []), ...Object.keys(TAB_LABELS)])].filter(k => Object.hasOwn(TAB_LABELS, k));
+    $('#megainfo_tab_order').html(order.map((key, index) => `<div class="mi-order-row"><span>${esc(TAB_LABELS[key])}</span><span class="mi-order-actions"><button type="button" class="menu_button" data-mi-order="${key}" data-mi-direction="-1" title="Поднять ${esc(TAB_LABELS[key])}" aria-label="Поднять ${esc(TAB_LABELS[key])}"${index === 0 ? ' disabled' : ''}>↑</button><button type="button" class="menu_button" data-mi-order="${key}" data-mi-direction="1" title="Опустить ${esc(TAB_LABELS[key])}" aria-label="Опустить ${esc(TAB_LABELS[key])}"${index === order.length - 1 ? ' disabled' : ''}>↓</button></span></div>`).join(''));
+}
+
+function knownPeople() {
+    const c = SillyTavern.getContext();
+    const people = new Map();
+    for (const message of c.chat ?? []) for (const p of Object.values(getData(message)?.state?.people ?? {})) people.set(normName(p.name), p);
+    if (c.name2 && !people.has(normName(c.name2))) people.set(normName(c.name2), { name: c.name2, role: 'char' });
+    if (c.name1 && !people.has(normName(c.name1))) people.set(normName(c.name1), { name: c.name1, role: 'user' });
+    return people;
+}
+
+function renderTrackingFields() {
+    const name = String($('#megainfo_tracking_name').val() ?? '').trim();
+    const s = getSettings();
+    const key = normName(name);
+    const current = Object.hasOwn(s.tracking.overrides, key) ? s.tracking.overrides[key] : {};
+    const person = knownPeople().get(key) ?? { name, role: 'npc' };
+    const policy = trackingFor(person, s);
+    $('#megainfo_tracking_detail').val(current.detail ?? 'inherit').prop('disabled', !name);
+    $('#megainfo_tracking_reset').prop('disabled', !name || !Object.hasOwn(s.tracking.overrides, key));
+    $('#megainfo_tracking_fields').html(Object.entries(TRACKING_FIELDS).map(([field, label]) => `<label class="checkbox_label"><input type="checkbox" data-mi-track-field="${field}"${policy.fields[field] ? ' checked' : ''}${!name || policy.detail === 'off' ? ' disabled' : ''}><span>${esc(label)}</span></label>`).join(''));
+}
+
+function renderPreferences() {
+    renderOrder();
+    $('#megainfo_pulse_fields').html(Object.entries(PULSE_LABELS).map(([key, label]) => `<div class="mi-set-row"><label>${esc(label)}</label><select class="text_pole" data-mi-setting="display.pulse.${key}"><option value="show">Сразу</option><option value="collapse">Под раскрытие</option><option value="hide">Скрыть</option></select></div>`).join(''));
+    $('#megainfo_known_people').html([...knownPeople().values()].map(p => `<option value="${esc(p.name)}"></option>`).join(''));
+    renderTrackingFields();
+}
+
+function updatePresetDescription() {
+    const selected = PRESETS.find(p => p.id === $('#megainfo_preset').val());
+    $('#megainfo_preset_description').text(selected?.description ?? '');
+}
+
+function initPreferences() {
+    const $root = $('.megainfo-settings');
+    const activate = (attribute, value, panelAttribute) => {
+        $root.find(`[${attribute}]`).each((_, el) => $(el).attr('aria-selected', String(el.getAttribute(attribute) === value)));
+        $root.find(`[${panelAttribute}]`).each((_, el) => { el.hidden = el.getAttribute(panelAttribute) !== value; });
+    };
+    for (const [attribute, panels] of [['data-mi-config-tab', 'data-mi-config-panel'], ['data-mi-config-subtab', 'data-mi-config-subpanel']]) {
+        $root.on('click', `[${attribute}]`, function () { activate(attribute, this.getAttribute(attribute), panels); });
+        $root.on('keydown', `[${attribute}]`, function (event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const tabs = $root.find(`[${attribute}]`).toArray();
+            const index = tabs.indexOf(this);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+            tabs[next].click(); tabs[next].focus();
+        });
+    }
+    $root.on('click', '[data-mi-order]', function () {
+        const s = getSettings();
+        const order = [...new Set([...(Array.isArray(s.display.tabOrder) ? s.display.tabOrder : []), ...Object.keys(TAB_LABELS)])].filter(k => Object.hasOwn(TAB_LABELS, k));
+        const key = this.dataset.miOrder;
+        const index = order.indexOf(key), target = index + Number(this.dataset.miDirection);
+        if (target < 0 || target >= order.length) return;
+        [order[index], order[target]] = [order[target], order[index]];
+        s.display.tabOrder = order;
+        const direction = this.dataset.miDirection;
+        renderOrder();
+        $root.find(`[data-mi-order="${key}"][data-mi-direction="${direction}"]`).trigger('focus');
+        hooks.onChange('display.tabOrder', order);
+    });
+    $('#megainfo_tracking_name').on('change input', renderTrackingFields);
+    $('#megainfo_tracking_detail').on('change', function () {
+        const s = getSettings(), name = String($('#megainfo_tracking_name').val() ?? '').trim(), key = normName(name);
+        const previous = Object.hasOwn(s.tracking.overrides, key) ? s.tracking.overrides[key] : {};
+        const next = { ...previous, role: (knownPeople().get(key) ?? { role: 'npc' }).role };
+        if (this.value === 'inherit') delete next.detail; else next.detail = this.value;
+        if (setTrackingOverride(s, name, next.detail || next.fields ? next : null)) {
+            renderTrackingFields(); hooks.onChange('tracking');
+        }
+    });
+    $root.on('change', '[data-mi-track-field]', function () {
+        const s = getSettings(), name = String($('#megainfo_tracking_name').val() ?? '').trim(), key = normName(name);
+        const previous = Object.hasOwn(s.tracking.overrides, key) ? s.tracking.overrides[key] : {};
+        if (setTrackingOverride(s, name, { ...previous, role: (knownPeople().get(key) ?? { role: 'npc' }).role, fields: { ...previous.fields, [this.dataset.miTrackField]: this.checked } })) {
+            renderTrackingFields(); hooks.onChange('tracking');
+        }
+    });
+    $('#megainfo_tracking_reset').on('click', () => {
+        if (setTrackingOverride(getSettings(), $('#megainfo_tracking_name').val(), null)) { renderTrackingFields(); hooks.onChange('tracking'); }
+    });
+    $('#megainfo_preset').html(PRESETS.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join(''))
+        .val(getSettings().lastPreset ?? PRESETS[0].id).on('change', updatePresetDescription);
+    updatePresetDescription();
+    $('#megainfo_preset_apply').on('click', () => {
+        const id = $('#megainfo_preset').val();
+        if (!applyPreset(getSettings(), id)) return;
+        loadValues(); hooks.onChange('preset', id);
+        $('#megainfo_preset_status').text(`Применён набор «${PRESETS.find(p => p.id === id).name}». Подключение и данные чатов сохранены.`);
+    });
+}
 
 function getPath(obj, path) {
     return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -34,6 +139,7 @@ function fillProfiles() {
 
 export function loadValues() {
     const s = getSettings();
+    renderPreferences();
     $('.megainfo-settings [data-mi-setting]').each(function () {
         const value = getPath(s, $(this).data('mi-setting'));
         if (this.type === 'checkbox') this.checked = !!value;
@@ -105,6 +211,7 @@ export async function initSettingsUi(h) {
     $('#extensions_settings2').append(html);
 
     fillProfiles();
+    initPreferences();
     loadValues();
     renderLog();
     Log.onLog(() => renderLog());
@@ -121,8 +228,19 @@ export async function initSettingsUi(h) {
             value = Number.isFinite(value) ? Math.min(0, value) : 0;
             $(this).val(value);
         }
+        if (path === 'display.fontSize') {
+            value = Number.isFinite(value) ? Math.min(150, Math.max(80, value)) : 100;
+            $(this).val(value);
+        }
+        if (path === 'modules.pocket.maxItems' || path === 'modules.world.threadLimit') {
+            value = Number.isFinite(value) ? Math.min(path === 'modules.pocket.maxItems' ? 20 : 12, Math.max(1, Math.round(value))) : 5;
+            $(this).val(value);
+        }
         setPath(getSettings(), path, value);
+        if (path === 'modules.sims.npcDetail') getSettings().tracking.roles.npc = value;
+        if (path === 'tracking.roles.npc' && value !== 'off') getSettings().modules.sims.npcDetail = value;
         if (path === 'theme') $('#megainfo_custom_colors').toggle(value === 'custom');
+        if (path.startsWith('tracking.')) renderTrackingFields();
         hooks.onChange(path, value);
     });
 
@@ -141,6 +259,10 @@ export async function initSettingsUi(h) {
     for (const ev of ['CONNECTION_PROFILE_CREATED', 'CONNECTION_PROFILE_DELETED', 'CONNECTION_PROFILE_UPDATED']) {
         if (eventTypes[ev]) eventSource.on(eventTypes[ev], fillProfiles);
     }
+    if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, () => {
+        $('#megainfo_known_people').html([...knownPeople().values()].map(p => `<option value="${esc(p.name)}"></option>`).join(''));
+        renderTrackingFields();
+    });
 }
 
 let refreshTimer = null;

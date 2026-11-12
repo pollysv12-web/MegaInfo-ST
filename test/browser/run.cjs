@@ -43,6 +43,8 @@ function check(name, ok, info = '') {
     page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('TOAST') && !m.text().startsWith('[MegaInfo]')) errors.push(m.text()); });
     await page.goto(`http://localhost:${port}/`);
     await page.waitForFunction(() => typeof globalThis.megaInfoInterceptor === 'function' && document.querySelector('.megainfo-settings'));
+    await page.click('[data-mi-config-tab="view"]');
+    await page.click('[data-mi-config-subtab="colors"]');
 
     const settle = () => page.waitForFunction(() => !document.querySelector('.mi-pending'), null, { timeout: 5000 }).then(() => page.waitForTimeout(50));
     const lastBot = () => page.evaluate(() => {
@@ -307,6 +309,7 @@ function check(name, ok, info = '') {
         const el = await page.$(`#chat .mes[mesid="${mid}"] .mi-panel`);
         await el.screenshot({ path: path.join(shotsDir, `theme-${theme}.png`) });
     }
+    await page.click('[data-mi-config-subtab="layout"]');
     await page.selectOption('.megainfo-settings [data-mi-setting="layout"]', 'stack');
     const el = await page.$(`#chat .mes[mesid="${mid}"] .mi-panel`);
     await el.screenshot({ path: path.join(shotsDir, 'layout-stack.png') });

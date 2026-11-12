@@ -103,7 +103,7 @@ export function exportText() {
                 out.push(`- ${p.name}: ${bits.join(' · ')}${p.thought ? `\n  «${p.thought}»` : ''}`);
             }
             if (st.tx?.length) out.push(`Траты: ${st.tx.map((t) => `${t.who} ${formatMoney(t.amount, s.modules.sims.currency)} ${t.note}`).join('; ')}`);
-            if (st.slow) out.push(`Сближение: ${st.slow.points}/100`);
+            if (st.slow) out.push(`Slow burn: ${st.slow.points}/100`);
             if (st.world) {
                 const w = st.world;
                 out.push(`Сюжет: «${w.plot}» ${w.progress}% · напряжение ${w.tension}%${w.twist ? ` · ПОВОРОТ: ${w.twist}` : ''}`);
