@@ -1,7 +1,7 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.3.1';
+export const VERSION = '0.3.2';
 
 const SETTINGS_VERSION = 4;
 
@@ -35,7 +35,7 @@ export const DEFAULTS = {
 
     // ---- вид
     theme: 'tavern',          // tavern | glass | noir | parchment | pastel | minimal | custom
-    custom: { accent: '#ed91ad', bg: '#241b23', text: '#f7e7ee' },
+    custom: { accent: '#c79bd8', bg: '#1d1a24', text: '#ebe7f0' },
     font: 'inherit',          // inherit | sans | serif | mono | rounded
     layout: 'tabs',           // tabs | stack
     placement: 'top',         // top | bottom
@@ -48,7 +48,7 @@ export const DEFAULTS = {
         fontSize: 100,
         contrast: 'normal',
         tabOrder: ['chars', 'npc', 'rel', 'slow', 'world', 'place', 'body', 'pocket'],
-        pulse: { stats: 'show', mood: 'show', excitement: 'show', outfit: 'show', thought: 'show', money: 'show', profile: 'collapse', pocket: 'show' },
+        pulse: { stats: 'show', mood: 'show', excitement: 'show', outfit: 'show', thought: 'show', money: 'show', profile: 'collapse' },
         editControls: true,
     },
     tracking: {

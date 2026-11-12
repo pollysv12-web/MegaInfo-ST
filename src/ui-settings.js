@@ -15,7 +15,7 @@ import { TRACKING_FIELDS, setTrackingOverride, trackingFor } from './tracking.js
 let hooks = { onChange: () => {} };
 
 const TAB_LABELS = { chars: 'Пульс', npc: 'Окружение', rel: 'Связи', slow: 'Slow burn', world: 'Сюжет', place: 'Места', body: 'Следы', pocket: 'Кармашек' };
-const PULSE_LABELS = { stats: 'Потребности и страсть', mood: 'Настроение', excitement: 'Возбуждение', outfit: 'Одежда', thought: 'Мысли', money: 'Деньги', profile: 'Общая информация', pocket: 'Кармашек' };
+const PULSE_LABELS = { stats: 'Потребности и страсть', mood: 'Настроение', excitement: 'Возбуждение', outfit: 'Одежда', thought: 'Мысли', money: 'Деньги (Общая информация)', profile: 'Общая информация' };
 
 function renderOrder() {
     const stored = getSettings().display.tabOrder;

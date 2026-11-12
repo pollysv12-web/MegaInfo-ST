@@ -128,7 +128,7 @@ function render(messageId) {
     const html = renderPanel({
         data, opts, pending: isPending, isLast: id === lastBotMessageId(), collapsed, activeTab: s.lastTab,
     });
-    if (!html) return;
+    if (!html) { restoreDetails($mes, message); return; }
 
     const $host = $('<div class="mi-host mi-info-host"></div>').attr({ 'data-mi-theme': s.theme, 'data-mi-font': s.font, 'data-mi-contrast': s.display?.contrast || 'normal' }).html(html);
     if (s.placement === 'bottom') $block.children('.mi-diary-host').length && s.modules.diary.placement !== 'top'
