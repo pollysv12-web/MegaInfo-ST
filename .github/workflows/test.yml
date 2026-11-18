@@ -45,38 +45,55 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
-      - name: Теги и выпуски
+      - name: Проверка ключа RELEASE_TOKEN
+        id: key
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
-          HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          warn() { echo "::warning::$1"; echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          [ -n "$RELEASE_TOKEN" ] || warn "Секрета RELEASE_TOKEN нет — теги не ставятся (см. docs/DEVELOPMENT.md)."
+          code=$(curl -s -o repo.json -w '%{http_code}' -H "Authorization: Bearer $RELEASE_TOKEN" \
+            -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY")
+          case "$code" in
+            200) ;;
+            401) warn "GitHub не принял RELEASE_TOKEN: ключ неверный, просрочен или вставлен с лишним пробелом. Создайте ключ заново и замените секрет." ;;
+            403|404) warn "RELEASE_TOKEN не видит репозиторий: в настройках ключа Repository access → Only select repositories → MegaInfo-ST." ;;
+            *) warn "Неожиданный ответ GitHub при проверке RELEASE_TOKEN: HTTP $code." ;;
+          esac
+          [ "$(jq -r '.permissions.push // false' repo.json)" = "true" ] \
+            || warn "У RELEASE_TOKEN нет права записи: в Repository permissions поставьте Contents → Read and write."
+          echo "Ключ RELEASE_TOKEN принят"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+      - name: Теги и выпуски
+        if: steps.key.outputs.ok == 'true'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
+          # Дальше git работает с ключом RELEASE_TOKEN, а не со встроенным ключом проверок.
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          remote="https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           latest=$(git tag -l 'v*' | sed 's/^v//' | sort -V | tail -1)
           for ver in $(grep -oP '^## \K\d+\.\d+\.\d+(?= )' CHANGELOG.md | sort -V); do
             if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$ver" "$latest" | sort -V | tail -1)" = "$latest" ]; then continue; fi
             sha=$(git log --reverse --format=%H -S"\"version\": \"$ver\"" -- manifest.json | head -1)
             if [ -z "$sha" ]; then echo "Версия $ver не найдена в manifest.json — пропускаю"; continue; fi
             git tag -a "v$ver" "$sha" -m "MegaInfo $ver"
-            if ! git push origin "v$ver"; then
+            if ! git push "$remote" "v$ver"; then
               git tag -d "v$ver" >/dev/null
-              if [ "$HAS_RELEASE_TOKEN" = "true" ]; then
-                echo "::warning::Не удалось поставить тег v$ver — проверьте права RELEASE_TOKEN (Contents и Workflows: Read and write)"
-              else
-                echo "::warning::Тег v$ver не поставлен: GitHub требует ключ RELEASE_TOKEN в секретах репозитория (см. docs/DEVELOPMENT.md)"
-              fi
+              echo "::warning::Тег v$ver не поставлен. Проверьте ключ RELEASE_TOKEN: Repository access — MegaInfo-ST, права Contents и Workflows — Read and write."
               continue
             fi
             echo "Тег v$ver поставлен на $sha"
-            # Страница выпуска — дополнение: если GitHub её не разрешит, тег всё равно остаётся.
             awk -v v="$ver" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
             if gh release create "v$ver" --verify-tag --title "MegaInfo $ver" --notes-file notes.md; then
               echo "Страница выпуска v$ver создана"
             else
-              echo "::warning::Тег v$ver создан, но страницу выпуска GitHub создать не разрешил (нужен RELEASE_TOKEN)"
+              echo "::warning::Тег v$ver поставлен, но страницу выпуска создать не удалось."
             fi
           done
 
