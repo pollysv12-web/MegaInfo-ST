@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { normalizePulseValue, patchPulse, reapplyPulseEdits, editPulseField } from '../src/manual.js';
 
 const state = { people: { alex: { id: 'alex', name: 'Алекс', role: 'char', stats: { food: 60, arousal: 10 }, excitement: 45, money: 1500, outfit: 'Пальто' } } };
-test('ручная правка разделяет страсть и эмоциональное возбуждение, сохраняет исходное состояние', () => {
+test('ручная правка разделяет страсть и воодушевление, сохраняет исходное состояние', () => {
     const edited = patchPulse(state, 'alex', 'arousal', 25);
     assert.equal(edited.people.alex.stats.arousal, 25);
     assert.equal(edited.people.alex.excitement, 45);

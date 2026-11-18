@@ -104,9 +104,9 @@ const server = http.createServer((request, response) => {
         const main = `${message} .mi-role-char`;
         await page.locator(`${message} [data-mi-tab="chars"]`).click();
         const numbers = await page.evaluate(id => { const p = window.__st.chat[id].extra.megainfo.state.people['алекс']; return [p.stats.arousal, p.excitement]; }, id);
-        check('страсть и возбуждение — отдельные значения и подписи', numbers[0] === 55 && numbers[1] === 30
+        check('страсть и воодушевление — отдельные значения и подписи', numbers[0] === 55 && numbers[1] === 30
             && (await page.locator(`${main} [data-mi-stat="arousal"] .mi-stat-label`).textContent()).trim() === 'Страсть'
-            && (await page.locator(`${main} [data-mi-stat="excitement"] .mi-stat-label`).textContent()).trim() === 'Возбуждение', numbers);
+            && (await page.locator(`${main} [data-mi-stat="excitement"] .mi-stat-label`).textContent()).trim() === 'Воодушевление', numbers);
         const foodReason = page.locator(`${main} [data-mi-stat="food"] .mi-stat-change`);
         check('подсказка при наведении объясняет причины по времени и по сцене', /По времени/.test(await foodReason.locator('summary').getAttribute('title')) && /съел сэндвич/.test(await foodReason.locator('summary').getAttribute('title')));
         await foodReason.locator('summary').click();
@@ -117,7 +117,7 @@ const server = http.createServer((request, response) => {
         await page.evaluate(() => window.__popupQueue.push({ value: '75' }));
         await page.locator(`${main} [data-mi-act="edit-field"][data-mi-field="arousal"]`).click();
         await page.waitForFunction(id => window.__st.chat[id].extra.megainfo.state.people['алекс'].stats.arousal === 75, id);
-        check('карандашик меняет выбранный показатель и текущий свайп, не трогая возбуждение', await page.evaluate(id => {
+        check('карандашик меняет выбранный показатель и текущий свайп, не трогая воодушевление', await page.evaluate(id => {
             const m = window.__st.chat[id], p = m.extra.megainfo.state.people['алекс'];
             return p.excitement === 30 && p.changes.arousal.some(c => c.kind === 'manual') && m.swipe_info[m.swipe_id].extra.megainfo.state.people['алекс'].stats.arousal === 75;
         }, id));

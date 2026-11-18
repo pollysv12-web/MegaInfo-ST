@@ -24,14 +24,14 @@ test('прежнее сексуальное возбуждение остаёт�
     delete base.people['алекс'].changes;
     const state = apply(opts, base, { people: [{ name: 'Алекс', role: 'char', d: { excitement: 35 }, reasons: { excitement: 'порадовался встрече' } }] });
     const p = state.people['алекс'];
-    assert.equal(p.stats.arousal, 80, 'прежняя страсть не превращается в эмоциональное возбуждение');
+    assert.equal(p.stats.arousal, 80, 'прежняя страсть не превращается в воодушевление');
     assert.equal(p.excitement, 35);
     assert.equal(p.changes.excitement[0].kind, 'initial');
     assert.equal(p.changes.excitement[1].reason, 'порадовался встрече');
     assert.equal(p.changes.arousal, undefined);
     const rules = People.rules(state, request, opts).join('\n');
     assert.match(rules, /SEXUAL arousal only \(UI label «Страсть»\)/);
-    assert.match(rules, /excitement \(UI label «Возбуждение»\)/);
+    assert.match(rules, /excitement \(UI label «Воодушевление»\)/);
     assert.equal(base.people['алекс'].excitement, undefined, 'сохранённое исходное состояние не меняется');
 });
 
@@ -81,7 +81,7 @@ test('выбор полей для человека замораживает н�
     assert.equal(state.people['алекс'].stats.food, 99);
     assert.equal(state.people['алекс'].money, 20000);
     assert.equal(state.people['алекс'].outfit, 'рубашка');
-    assert.equal(state.people['алекс'].excitement, 20, 'выбор состояния включает возбуждение; скрытые значения не меняются');
+    assert.equal(state.people['алекс'].excitement, 20, 'выбор состояния включает воодушевление; скрытые значения не меняются');
     assert.equal(state.people['кира'].stats.food, 65);
     assert.equal(state.people['стоп'], undefined);
     assert.equal(state.people['алекс'].changes.food, undefined);
@@ -100,7 +100,7 @@ test('краткое отслеживание принимает явно выб
     assert.equal(state.people['кира'].thought, '');
 });
 
-test('выключенное эмоциональное возбуждение сохраняется, но не меняется', () => {
+test('выключенное воодушевление сохраняется, но не меняется', () => {
     const opts = options(), base = initial(opts);
     opts.s.modules.sims.excitement = false;
     const state = apply(opts, base, { time: '12:00', people: [{ name: 'Алекс', role: 'char', d: { excitement: 90, arousal: -5 } }] });

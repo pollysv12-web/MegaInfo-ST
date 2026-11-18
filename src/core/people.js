@@ -305,7 +305,7 @@ export function rules(state, request, opts) {
         r.push('- arousal is SEXUAL arousal only (UI label «Страсть»): sexual attraction or touch raises it; discomfort, distraction or satisfaction lower it; never add it by habit. Under 85 it does not steer behaviour; at 85+ only subtle fitting cues, never implied consent.');
     }
     if (emotions) {
-        r.push('- excitement (UI label «Возбуждение») is EMOTIONAL energy: joy, anticipation, nerves, азарт, adrenaline (d.excitement, or set.excitement:0 when calm). Ordinary joy or adrenaline is never d.arousal, and excitement implies nothing sexual; never move numbers between the two.');
+        r.push('- excitement (UI label «Воодушевление») is EMOTIONAL energy: joy, anticipation, nerves, азарт, adrenaline (d.excitement, or set.excitement:0 when calm). Ordinary joy or adrenaline is never d.arousal, and excitement implies nothing sexual; never move numbers between the two.');
     }
     if (withReasons(opts) && (stats || emotions || rel)) {
         r.push(`- reasons: for every nonzero d/set value${rel ? ' and every nonzero aff' : ''}, a brief factual cause from this reply under the same key, e.g. {"d":{"food":25},${rel ? '"aff":2,' : ''}"reasons":{"food":"съел сэндвич"${rel ? ',"aff":"она за него заступилась"' : ''}}}. Never invent a cause.`);

@@ -1,4 +1,4 @@
-name: Проверки
+name: Проверки и выпуск
 
 on:
   push:
@@ -21,3 +21,54 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Браузерные проверки
         run: npm run test:browser
+
+  # Новая версия из manifest.json получает тег и страницу выпуска с текстом из CHANGELOG.md.
+  # Создаются выпуски только новее последнего существующего тега.
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Теги и выпуски
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          latest=$(git tag -l 'v*' | sed 's/^v//' | sort -V | tail -1)
+          for ver in $(grep -oP '^## \K\d+\.\d+\.\d+(?= )' CHANGELOG.md | sort -V); do
+            if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$ver" "$latest" | sort -V | tail -1)" = "$latest" ]; then continue; fi
+            sha=$(git log --reverse --format=%H -S"\"version\": \"$ver\"" -- manifest.json | head -1)
+            if [ -z "$sha" ]; then echo "Версия $ver не найдена в manifest.json — пропускаю"; continue; fi
+            awk -v v="$ver" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
+            gh release create "v$ver" --target "$sha" --title "MegaInfo $ver" --notes-file notes.md
+            echo "Выпуск v$ver создан на $sha"
+          done
+
+  # Служебные ветки, уже целиком вошедшие в main, удаляются.
+  cleanup:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Удалить слитые ветки
+        run: |
+          set -euo pipefail
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          for ref in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin); do
+            case "$ref" in claude/*|test-UI) ;; *) continue ;; esac
+            if git merge-base --is-ancestor "origin/$ref" origin/main; then
+              git push origin --delete "$ref"
+              echo "Удалена слитая ветка $ref"
+            fi
+          done
