@@ -9,8 +9,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -39,7 +39,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Теги и выпуски
@@ -47,15 +47,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
           latest=$(git tag -l 'v*' | sed 's/^v//' | sort -V | tail -1)
           for ver in $(grep -oP '^## \K\d+\.\d+\.\d+(?= )' CHANGELOG.md | sort -V); do
             if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$ver" "$latest" | sort -V | tail -1)" = "$latest" ]; then continue; fi
             sha=$(git log --reverse --format=%H -S"\"version\": \"$ver\"" -- manifest.json | head -1)
             if [ -z "$sha" ]; then echo "Версия $ver не найдена в manifest.json — пропускаю"; continue; fi
+            # Тег отправляется обычным git push — это разрешено токену проверок.
+            git tag -a "v$ver" "$sha" -m "MegaInfo $ver"
+            git push origin "v$ver"
+            echo "Тег v$ver поставлен на $sha"
+            # Страница выпуска — дополнение: если GitHub её не разрешит, тег всё равно остаётся.
             awk -v v="$ver" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
-            gh release create "v$ver" --target "$sha" --title "MegaInfo $ver" --notes-file notes.md
-            echo "Выпуск v$ver создан на $sha"
+            if gh release create "v$ver" --verify-tag --title "MegaInfo $ver" --notes-file notes.md; then
+              echo "Страница выпуска v$ver создана"
+            else
+              echo "::warning::Тег v$ver создан, но страницу выпуска GitHub создать не разрешил"
+            fi
           done
 
   # Служебные ветки, уже целиком вошедшие в main, удаляются.
@@ -66,7 +76,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Удалить слитые ветки

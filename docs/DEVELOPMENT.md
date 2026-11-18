@@ -131,5 +131,5 @@ npm run test:browser
 
 1. Поднять версию в `manifest.json`, `package.json`, `src/settings.js` (`VERSION`)
    и в `settings.html` (`mi-edition-tag`); добавить запись `## X.Y.Z — дата` в `CHANGELOG.md`.
-2. Отправить в `main`. GitHub Actions прогонит проверки, создаст тег `vX.Y.Z`
-   и страницу выпуска с текстом из истории версий, а слитые ветки `claude/*` удалит.
+2. Отправить в `main`. GitHub Actions прогонит проверки, поставит тег `vX.Y.Z`
+   и, если GitHub разрешит, страницу выпуска с текстом из истории версий; слитые ветки `claude/*` удалит.
