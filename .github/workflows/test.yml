@@ -51,6 +51,9 @@ jobs:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           warn() { echo "::warning::$1"; echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          # Пробелы и переносы строк, случайно попавшие в секрет при вставке, не считаются частью ключа.
+          RELEASE_TOKEN=$(printf '%s' "$RELEASE_TOKEN" | tr -d '[:space:]')
+          case "$RELEASE_TOKEN" in ''|github_pat_*|ghp_*) ;; *) warn "RELEASE_TOKEN не похож на ключ GitHub: он должен начинаться с github_pat_ (или ghp_). Вставьте в секрет сам ключ, а не его название." ;; esac
           [ -n "$RELEASE_TOKEN" ] || warn "Секрета RELEASE_TOKEN нет — теги не ставятся (см. docs/DEVELOPMENT.md)."
           code=$(curl -s -o repo.json -w '%{http_code}' -H "Authorization: Bearer $RELEASE_TOKEN" \
             -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY")
@@ -71,6 +74,8 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set -euo pipefail
+          RELEASE_TOKEN=$(printf '%s' "$RELEASE_TOKEN" | tr -d '[:space:]')
+          export GH_TOKEN="$RELEASE_TOKEN"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
