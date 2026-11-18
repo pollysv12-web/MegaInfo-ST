@@ -133,3 +133,9 @@ npm run test:browser
    и в `settings.html` (`mi-edition-tag`); добавить запись `## X.Y.Z — дата` в `CHANGELOG.md`.
 2. Отправить в `main`. GitHub Actions прогонит проверки, поставит тег `vX.Y.Z`
    и, если GitHub разрешит, страницу выпуска с текстом из истории версий; слитые ветки `claude/*` удалит.
+
+Встроенный ключ GitHub Actions не может ставить теги на коммиты, которые меняют файлы
+в `.github/workflows`, и не может создавать страницы выпусков. Поэтому в
+**Settings → Secrets and variables → Actions** хранится секрет `RELEASE_TOKEN` —
+fine-grained ключ только для этого репозитория с правами **Contents** и **Workflows**
+(Read and write). Без секрета шаг выпуска выводит предупреждение и не падает.

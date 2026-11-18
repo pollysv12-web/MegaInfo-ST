@@ -32,6 +32,9 @@ jobs:
 
   # Новая версия из manifest.json получает тег и страницу выпуска с текстом из CHANGELOG.md.
   # Создаются выпуски только новее последнего существующего тега.
+  # Встроенный ключ GitHub не может ставить теги на коммиты, меняющие файлы в .github/workflows,
+  # и не может создавать страницы выпусков. Для этого в секретах репозитория хранится RELEASE_TOKEN
+  # (ключ с правами Contents и Workflows). Без него шаг только предупреждает и не падает.
   release:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -42,9 +45,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - name: Теги и выпуски
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+          HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -55,16 +60,23 @@ jobs:
             if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$ver" "$latest" | sort -V | tail -1)" = "$latest" ]; then continue; fi
             sha=$(git log --reverse --format=%H -S"\"version\": \"$ver\"" -- manifest.json | head -1)
             if [ -z "$sha" ]; then echo "Версия $ver не найдена в manifest.json — пропускаю"; continue; fi
-            # Тег отправляется обычным git push — это разрешено токену проверок.
             git tag -a "v$ver" "$sha" -m "MegaInfo $ver"
-            git push origin "v$ver"
+            if ! git push origin "v$ver"; then
+              git tag -d "v$ver" >/dev/null
+              if [ "$HAS_RELEASE_TOKEN" = "true" ]; then
+                echo "::warning::Не удалось поставить тег v$ver — проверьте права RELEASE_TOKEN (Contents и Workflows: Read and write)"
+              else
+                echo "::warning::Тег v$ver не поставлен: GitHub требует ключ RELEASE_TOKEN в секретах репозитория (см. docs/DEVELOPMENT.md)"
+              fi
+              continue
+            fi
             echo "Тег v$ver поставлен на $sha"
             # Страница выпуска — дополнение: если GitHub её не разрешит, тег всё равно остаётся.
             awk -v v="$ver" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
             if gh release create "v$ver" --verify-tag --title "MegaInfo $ver" --notes-file notes.md; then
               echo "Страница выпуска v$ver создана"
             else
-              echo "::warning::Тег v$ver создан, но страницу выпуска GitHub создать не разрешил"
+              echo "::warning::Тег v$ver создан, но страницу выпуска GitHub создать не разрешил (нужен RELEASE_TOKEN)"
             fi
           done
 
