@@ -1,0 +1,41 @@
+name: Ошибка
+description: Что-то работает не так, как ожидалось
+labels: [ошибка]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что помогаете с тестом! Не вставляйте сюда ключи API и личные переписки целиком.
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло
+      description: Что вы делали и что пошло не так.
+      placeholder: Отправила сообщение, инфоблок не появился, вместо него ошибка «…»
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидали увидеть
+  - type: input
+    id: model
+    attributes:
+      label: Модель и способ подключения
+      placeholder: Gemini 2.5 Pro через OpenRouter, Chat Completion
+  - type: input
+    id: version
+    attributes:
+      label: Версия MegaInfo и SillyTavern
+      description: Версия MegaInfo видна в заголовке её настроек.
+      placeholder: MegaInfo 0.3.4, SillyTavern 1.19.0
+  - type: textarea
+    id: report
+    attributes:
+      label: Диагностика
+      description: Расширения → MegaInfo → Логи и диагностика → «Скопировать диагностику», затем вставьте сюда.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Скриншоты и что ещё важно

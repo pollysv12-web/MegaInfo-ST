@@ -43,7 +43,7 @@ test('обновление 0.2: пассивный рост исправляет
     });
 });
 
-test('миграция сохраняет выбранный ноль и собственную скорость спада возбуждения', () => {
+test('миграция сохраняет выбранный ноль и собственную скорость спада страсти', () => {
     for (const decay of [0, -3, -25]) {
         inTavern({ modules: { sims: { stats: { arousal: { decay } } } } }, (_, saveCount) => {
             assert.equal(getSettings().modules.sims.stats.arousal.decay, decay);

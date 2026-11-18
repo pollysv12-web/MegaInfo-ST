@@ -5,8 +5,8 @@
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "pollysv12-web",
-    "version": "0.3.3",
+    "author": "Sandria Ustala",
+    "version": "0.3.4",
     "homePage": "https://github.com/pollysv12-web/MegaInfo-ST",
     "auto_update": true,
     "generate_interceptor": "megaInfoInterceptor"

@@ -1,0 +1,11 @@
+name: Идея
+description: Предложить улучшение или новую возможность
+labels: [идея]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Что хочется
+      description: Опишите идею и в какой игре она пригодится.
+    validations:
+      required: true

@@ -2,7 +2,7 @@
 import { normName } from './util.js';
 
 export const TRACKING_FIELDS = Object.freeze({
-    stats: 'Состояние: потребности, возбуждение и страсть', mood: 'Настроение', outfit: 'Одежда',
+    stats: 'Состояние: потребности, воодушевление и страсть', mood: 'Настроение', outfit: 'Одежда',
     thought: 'Мысли', money: 'Деньги', profile: 'Профиль', relations: 'Отношения', pocket: 'Кармашек',
 });
 export const TRACKING_DETAILS = Object.freeze(['full', 'short', 'off']);

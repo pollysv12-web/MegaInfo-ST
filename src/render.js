@@ -40,11 +40,11 @@ const para = (t) => (t ? `<p>${nl2br(t)}</p>` : '');
 
 // ---------------------------------------------------------------- персонажи (sims)
 
-const EMOTIONAL = { label: 'Возбуждение', icon: 'fa-face-smile-beam' };
-/** Подсказки при наведении: страсть и возбуждение легко спутать. */
+const EMOTIONAL = { label: 'Воодушевление', icon: 'fa-face-smile-beam' };
+/** Подсказки при наведении: страсть и воодушевление — разные вещи. */
 const HINT = {
     arousal: 'Страсть — только сексуальное возбуждение.',
-    excitement: 'Возбуждение — эмоциональный подъём: радость, азарт, предвкушение, адреналин. Не сексуальное.',
+    excitement: 'Воодушевление — эмоциональный подъём: радость, азарт, предвкушение, адреналин. Ничего сексуального.',
 };
 const CHANGE_KINDS = { time: 'По времени', event: 'В сцене', initial: 'Начальное значение', manual: 'Вручную' };
 
@@ -145,7 +145,7 @@ function personCard(p, opts, warnings, { showRel = false, editable = true, state
             h += pulseSection(p, 'stats', 'Состояние', `<div class="${view === 'chips' ? 'mi-chips' : 'mi-stats'}">${rows}</div>`, opts);
         }
     }
-    if (fields.stats) h += pulseSection(p, 'excitement', 'Эмоциональное возбуждение', statRow(p, 'excitement', p.excitement ?? 0, p.excitementDiff, view, false, opts, state, editable), opts);
+    if (fields.stats) h += pulseSection(p, 'excitement', 'Воодушевление', statRow(p, 'excitement', p.excitement ?? 0, p.excitementDiff, view, false, opts, state, editable), opts);
     if (fields.mood && (p.mood || editable)) h += pulseSection(p, 'mood', 'Настроение', textField(p, 'mood', 'Настроение', 'fa-masks-theater', p.mood, opts, editable), opts);
     if (fields.outfit && (p.outfit || editable)) h += pulseSection(p, 'outfit', 'Одежда', textField(p, 'outfit', 'Одежда', 'fa-shirt', p.outfit, opts, editable), opts);
     // В «Пульсе» баланс находится в «Общей информации». В отдельной

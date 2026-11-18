@@ -62,7 +62,7 @@ test('двадцать четыре коротких хода копят спа�
     }
     assert.ok(Math.abs(state.people['кристофер'].stats.arousal - 80) < 0.002, 'ходы по пять минут дают в сумме два часа спада страсти');
     assert.ok(Math.abs(state.people['кристофер'].stats.food - 70) < 0.002, 'спад потребностей тоже не теряется на коротких ходах');
-    assert.equal(state.people['кристофер'].excitement, 45, 'возбуждение тоже копит дробный спад');
+    assert.equal(state.people['кристофер'].excitement, 45, 'воодушевление тоже копит дробный спад');
     assert.ok(Object.values(state.people['кристофер'].diff).every(Number.isInteger), 'стрелки изменений остаются целыми числами');
 });
 

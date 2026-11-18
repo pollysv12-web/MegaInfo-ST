@@ -31,12 +31,12 @@ function fixture() {
 
 const panel = (f) => renderPanel({ data: { state: f.state }, opts: f.opts });
 
-test('возбуждение и страсть показываются отдельно, причины раскрываются и выключаются', () => {
+test('воодушевление и страсть показываются отдельно, причины раскрываются и выключаются', () => {
     const f = fixture();
     const html = panel(f);
     assert.match(html, /data-mi-stat="arousal"[\s\S]*?Страсть: 7%/);
-    assert.match(html, /data-mi-stat="excitement"[\s\S]*?Возбуждение: 0%/);
-    assert.match(html, /радость, азарт, предвкушение, адреналин\. Не сексуальное/);
+    assert.match(html, /data-mi-stat="excitement"[\s\S]*?Воодушевление: 0%/);
+    assert.match(html, /радость, азарт, предвкушение, адреналин\. Ничего сексуального/);
     assert.match(html, /Страсть — только сексуальное возбуждение/);
     assert.match(html, /<details class="mi-stat-change" data-mi-sec="change:char:food"><summary title=/);
     assert.match(html, /По времени −5: Прошёл игровой час/);

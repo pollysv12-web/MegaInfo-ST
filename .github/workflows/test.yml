@@ -1,4 +1,4 @@
-name: Проверки
+name: Проверки и выпуск
 
 on:
   push:
@@ -9,15 +9,128 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts
+      - name: Зависимости
+        # Сервер пакетов иногда не отвечает вовремя — до трёх попыток с паузой.
+        run: |
+          for attempt in 1 2 3; do
+            npm ci --ignore-scripts --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && exit 0
+            echo "Попытка $attempt не удалась, жду и пробую снова"
+            sleep 30
+          done
+          exit 1
       - name: Юнит-тесты
         run: npm test
       - name: Chromium для браузерных проверок
         run: npx playwright install --with-deps chromium
       - name: Браузерные проверки
         run: npm run test:browser
+
+  # Каждая версия из CHANGELOG.md получает тег на коммите, где она появилась в manifest.json,
+  # и страницу выпуска с текстом из истории версий. Существующие теги и тексты сверяются заново.
+  # Встроенный ключ GitHub не может ставить теги на коммиты, меняющие .github/workflows,
+  # и создавать страницы выпусков, поэтому используется секрет RELEASE_TOKEN
+  # (ключ с правами Contents и Workflows). Без него шаг только предупреждает и не падает.
+  release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Проверка ключа RELEASE_TOKEN
+        id: key
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          warn() { echo "::warning::$1"; echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          # Пробелы и переносы строк, случайно попавшие в секрет при вставке, не считаются частью ключа.
+          RELEASE_TOKEN=$(printf '%s' "$RELEASE_TOKEN" | tr -d '[:space:]')
+          [ -n "$RELEASE_TOKEN" ] || warn "Секрета RELEASE_TOKEN нет — теги не ставятся (см. docs/DEVELOPMENT.md)."
+          case "$RELEASE_TOKEN" in github_pat_*|ghp_*) ;; *) warn "RELEASE_TOKEN не похож на ключ GitHub: он должен начинаться с github_pat_. Вставьте в секрет сам ключ, а не его название." ;; esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $RELEASE_TOKEN" \
+            -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY")
+          case "$code" in
+            200) ;;
+            401) warn "GitHub не принял RELEASE_TOKEN: ключ неверный или просрочен. Создайте его заново и замените секрет." ;;
+            *) warn "RELEASE_TOKEN не видит репозиторий (HTTP $code): в настройках ключа выберите этот репозиторий." ;;
+          esac
+          echo "Ключ RELEASE_TOKEN принят"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+      - name: Теги и выпуски
+        if: steps.key.outputs.ok == 'true'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          RELEASE_TOKEN=$(printf '%s' "$RELEASE_TOKEN" | tr -d '[:space:]')
+          export GH_TOKEN="$RELEASE_TOKEN"
+          git config user.name "Sandria Ustala"
+          git config user.email "sandria.ustala@users.noreply.github.com"
+          git fetch --tags --force
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          remote="https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for ver in $(grep -oP '^## \K\d+\.\d+\.\d+(?= )' CHANGELOG.md | sort -V); do
+            sha=$(git log --reverse --format=%H -S"\"version\": \"$ver\"" HEAD -- manifest.json | head -1)
+            if [ -z "$sha" ]; then echo "Версия $ver не найдена в manifest.json — пропускаю"; continue; fi
+            current=$(git rev-parse -q --verify "refs/tags/v$ver^{commit}" || true)
+            if [ "$current" != "$sha" ]; then
+              git tag -f -a "v$ver" "$sha" -m "MegaInfo $ver"
+              if ! git push --force "$remote" "refs/tags/v$ver"; then
+                echo "::warning::Тег v$ver не поставлен. Проверьте ключ RELEASE_TOKEN: доступ к репозиторию, права Contents и Workflows — Read and write."
+                continue
+              fi
+              echo "Тег v$ver поставлен на $sha"
+            fi
+            awk -v v="$ver" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 0 } f' CHANGELOG.md > notes.md
+            if gh release view "v$ver" >/dev/null 2>&1; then
+              gh release edit "v$ver" --title "MegaInfo $ver" --notes-file notes.md >/dev/null \
+                && echo "Описание v$ver обновлено" || echo "::warning::Не удалось обновить описание v$ver."
+            else
+              gh release create "v$ver" --verify-tag --title "MegaInfo $ver" --notes-file notes.md >/dev/null \
+                && echo "Страница выпуска v$ver создана" || echo "::warning::Тег v$ver поставлен, но страницу выпуска создать не удалось."
+            fi
+          done
+
+  # Ветки, уже целиком вошедшие в main, удаляются; запуски проверок для коммитов,
+  # которых больше нет в истории main, убираются из списка.
+  cleanup:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Удалить слитые ветки
+        run: |
+          set -euo pipefail
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          for ref in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin); do
+            case "$ref" in main|HEAD) continue ;; esac
+            if git merge-base --is-ancestor "origin/$ref" origin/main; then
+              git push origin --delete "$ref"
+              echo "Удалена слитая ветка $ref"
+            fi
+          done
+      - name: Убрать запуски для коммитов вне main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" -q '.workflow_runs[] | "\(.id) \(.head_sha)"' |
+          while read -r id sha; do
+            if ! git merge-base --is-ancestor "$sha" origin/main 2>/dev/null; then
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/runs/$id" && echo "Удалён запуск $id"
+            fi
+          done

@@ -6,7 +6,7 @@ const STATS = new Set(['food', 'hygiene', 'energy', 'arousal']);
 const TEXT = new Set(['mood', 'outfit', 'thought', 'profile.birthday', 'profile.zodiac', 'profile.mbti']);
 export const PULSE_FIELDS = Object.freeze({
     food: 'Сытость', hygiene: 'Гигиена', energy: 'Бодрость', arousal: 'Страсть',
-    excitement: 'Возбуждение', money: 'Деньги', mood: 'Настроение', outfit: 'Одежда', thought: 'Мысли',
+    excitement: 'Воодушевление', money: 'Деньги', mood: 'Настроение', outfit: 'Одежда', thought: 'Мысли',
     'profile.birthday': 'День рождения', 'profile.zodiac': 'Знак зодиака', 'profile.mbti': 'MBTI',
 });
 

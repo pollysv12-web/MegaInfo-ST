@@ -1,7 +1,7 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.3.3';
+export const VERSION = '0.3.4';
 
 const SETTINGS_VERSION = 5;
 
@@ -83,8 +83,8 @@ export const DEFAULTS = {
             showProfile: true,
             birthdays: true,      // учитывать д/р в сцене, недостающие даты назначаются один раз
             userThoughts: false,  // разрешить модели писать внутренние мысли {{user}}
-            excitement: true,     // эмоциональное возбуждение; не сексуальная страсть
-            excitementDecay: -15, // спад эмоционального возбуждения за 2 часа
+            excitement: true,     // воодушевление: эмоциональный подъём, не сексуальная страсть
+            excitementDecay: -15, // спад воодушевления за 2 часа
             reasons: true,        // просить у модели причины изменений и показывать их
             currency: 'auto',     // auto — модель определяет валюту в первом блоке чата
             lowMoney: 0,          // порог «почти нет денег»; 0 — по валюте
@@ -209,7 +209,7 @@ function migrate(s) {
         s.tracking.roles.npc = s.modules.sims.npcDetail === 'full' ? 'full' : 'short';
     }
     if ((Number(s.schemaVersion) || 0) < 3) {
-        // В 0.2 возбуждение росло само (+10/2 ч). Один раз меняем только
+        // В 0.2 страсть росла сама (+10/2 ч). Один раз меняем только
         // положительную скорость; выбранные пользователем 0 и спад сохраняем.
         const arousal = s.modules?.sims?.stats?.arousal;
         if (arousal && Number(arousal.decay) > 0) arousal.decay = -10;

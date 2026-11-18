@@ -1,8 +1,9 @@
 {
   "name": "megainfo-st",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "private": true,
+  "author": "Sandria Ustala",
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:browser": "node test/browser/story.cjs && node test/browser/controls.cjs && node test/browser/layout.cjs && node test/browser/editor.cjs",
