@@ -1,7 +1,7 @@
 <div class="megainfo-settings">
     <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
-            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">0.3.2</span></b>
+            <b>MegaInfo · инфоблоки <span class="mi-edition-tag">0.3.3</span></b>
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
@@ -16,7 +16,7 @@
                 </div>
             </div>
 
-            <!-- Compact appearance, tracking, and gameplay presets -->
+            <!-- Вид, персонажи и игровые наборы -->
             <div class="mi-ui-settings">
                 <div class="mi-ui-tabs" role="tablist" aria-label="Оформление и игра">
                     <button type="button" class="mi-ui-tab" data-mi-config-tab="view" role="tab" aria-selected="true"><i class="fa-solid fa-palette"></i> Вид</button>
@@ -209,7 +209,12 @@
                     <div class="mi-hint">Если дата не задана, она назначается один раз. Близкие могут вспомнить о дне рождения, когда он наступит в игре; заранее напоминать не будут. MBTI раскрывается по нажатию, краткая подсказка доступна и при наведении.</div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.userThoughts"><span>Разрешить мысли {{user}} в состоянии</span></label>
                     <div class="mi-hint">Включайте, если разрешаете боту описывать ваши мысли. По умолчанию он пишет мысли только других персонажей. Одежда сохраняется между ответами и обновляется с учётом отдельных снятых или надетых вещей.</div>
-                    <div class="mi-set-row"><label>Валюта</label><input type="text" class="text_pole" maxlength="6" data-mi-setting="modules.sims.currency"></div>
+                    <div class="mi-set-grid">
+                        <div class="mi-set-row"><label>Валюта</label><input type="text" class="text_pole" maxlength="12" list="megainfo_currency_list" data-mi-setting="modules.sims.currency"></div>
+                        <div class="mi-set-row"><label>«Почти нет денег» ниже</label><input type="number" class="text_pole" min="0" step="1" data-mi-setting="modules.sims.lowMoney"></div>
+                    </div>
+                    <datalist id="megainfo_currency_list"><option value="auto"></option><option value="₽"></option><option value="$"></option><option value="€"></option><option value="₴"></option><option value="₸"></option><option value="¥"></option><option value="зол."></option></datalist>
+                    <div class="mi-hint">auto — модель сама определит валюту в первом инфоблоке чата. Поменять валюту одного чата можно в волшебной палочке → MegaInfo. Порог 0 — подобрать по валюте (₽ — 1000, $ и € — 20, золото — 3); для незнакомой валюты предупреждения нет.</div>
                     <div class="mi-set-sub">Статы и их изменение за 2 часа времени в ролевой</div>
                     <div class="mi-stat-table">
                         <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.stats.food.on"><span>Сытость</span></label>
@@ -222,7 +227,10 @@
                         <input type="number" class="text_pole" step="1" max="0" data-mi-setting="modules.sims.stats.arousal.decay">
                     </div>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.excitement"><span>Отслеживать эмоциональное возбуждение</span></label>
-                    <div class="mi-hint">Страсть — сексуальное возбуждение: со временем снижается, 0 отключает пассивный спад. Возбуждение — радость, азарт и предвкушение; оно меняется только по событиям и не повышает страсть. На поведение влияет только высокий сексуальный порог. Голод, усталость и низкая гигиена заметны окружающим с учётом ситуации и характера, без обязательной драмы.</div>
+                    <div class="mi-set-row"><label>Спад возбуждения за 2 часа</label><input type="number" class="text_pole" step="1" max="0" data-mi-setting="modules.sims.excitementDecay"></div>
+                    <div class="mi-hint"><b>Страсть</b> — только сексуальное возбуждение: растёт от влечения и прикосновений, падает от неловкости, отвлечения или разрядки; со временем утихает сама (0 отключает спад). <b>Возбуждение</b> — эмоциональный подъём: радость, азарт, предвкушение, волнение, адреналин. Оно ничего сексуального не означает и никогда не переходит в страсть. На поведение влияет только страсть от 85. Голод, усталость и низкая гигиена заметны окружающим по ситуации и характеру, без обязательной драмы.</div>
+                    <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.sims.reasons"><span>Причины изменений (по нажатию на число)</span></label>
+                    <div class="mi-hint">Модель коротко объясняет каждое изменение: «съел сэндвич», «она за него заступилась». Блок в ответе становится заметно длиннее (примерно на треть) и тратит больше токенов. Если выключить, причины не запрашиваются и не показываются.</div>
                 </div>
             </div>
 
@@ -262,7 +270,7 @@
                                 <option value="fast">Быстро (+5)</option>
                             </select>
                         </div>
-                        <div class="mi-set-row"><label title="Пусто = персонаж чата ({{char}})">С кем (имя)</label><input type="text" class="text_pole" data-mi-setting="modules.slowburn.target" placeholder="{{char}}"></div>
+                        <div class="mi-set-row"><label title="Пусто = персонаж чата ({{char}}); в групповом чате — первый участник группы">С кем (имя)</label><input type="text" class="text_pole" data-mi-setting="modules.slowburn.target" placeholder="{{char}}"></div>
                         <div class="mi-set-row"><label>Каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.slowburn.every"></div>
                         <div class="mi-set-row">
                             <label>Влияние на игру</label>
@@ -308,8 +316,8 @@
                 <div class="inline-drawer-content">
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.pocket.enabled"><span>Включить</span></label>
                     <label class="checkbox_label"><input type="checkbox" data-mi-setting="modules.pocket.auto"><span>Автоматически замечать важные предметы</span></label>
-                    <div class="mi-hint">Ключ, подарок, памятная вещь или улика — только то, что важно для сцены. Не полный список имущества. Можно добавлять, менять и убирать вещи вручную у бота и пользователя. В режиме без автоматики модель не меняет кармашек.</div>
-                    <div class="mi-set-grid"><div class="mi-set-row"><label>Вещей на персонажа</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.maxItems"></div><div class="mi-set-row"><label>Проверять каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.every"></div></div>
+                    <div class="mi-hint">Ключ, подарок, письмо, памятная вещь или улика — только то, что важно для сюжета, а не всё имущество и не одежда. Модель сама добавляет такие вещи и убирает их, когда персонаж их выложил, отдал, потерял или израсходовал. Вручную вещи можно добавлять, менять и убирать у бота и пользователя. Без автоматики модель кармашек не трогает.</div>
+                    <div class="mi-set-grid"><div class="mi-set-row"><label title="От 1 до 20. Модель не обязана заполнять все места.">Вещей на персонажа (1–20)</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.maxItems"></div><div class="mi-set-row"><label>Проверять каждые N ответов</label><input type="number" class="text_pole" min="1" max="20" data-mi-setting="modules.pocket.every"></div></div>
                 </div>
             </div>
 

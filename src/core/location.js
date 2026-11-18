@@ -22,9 +22,9 @@ export function stateLines(state, opts) {
     const names = Object.values(opts.places ?? {}).map((p) => p.name);
     const here = findPlace(opts.places, state?.location);
     if (here && opts.s.modules.location.remind) {
-        lines.push(`Current place «${here.name}» (keep its look consistent): ${[here.look, here.details].filter(Boolean).join(' ').slice(0, 450)}`);
+        lines.push(`Current place «${here.name}» (keep it consistent): ${[here.look, here.details].filter(Boolean).join(' ').slice(0, 450)}`);
     }
-    if (names.length) lines.push(`Already described places: ${names.slice(-25).join('; ')}.`);
+    if (names.length) lines.push(`Described places: ${names.slice(-25).join('; ')}.`);
     return lines;
 }
 
@@ -35,7 +35,7 @@ export function schema() {
 export function rules(state, opts) {
     const detail = DETAIL[opts.s.modules.location.detail] ?? DETAIL.medium;
     return [
-        `- place: ONLY when at the END of this reply the scene is in a location that is NOT in "Already described places" (a new place). Then give {"name": exactly the same as "location", "look": what it looks like, "details": notable objects, layout and what can be done there, "mood": atmosphere, light, sounds, smells} — ${detail}. If the place is already described, OMIT "place" entirely.`,
+        `- place: ONLY if the scene ends in a place NOT in "Described places": {"name": same as location, "look", "details": notable objects and what can be done there, "mood": light, sounds, smells}, ${detail}. Otherwise omit "place".`,
     ];
 }
 

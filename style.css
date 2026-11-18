@@ -524,7 +524,7 @@ details.mi-diary[open] .mi-diary-chevron { transform: rotate(180deg); }
     min-width: 0;
 }
 .mi-stat-change { min-width: 0; flex: 1; }
-.mi-stat-change > summary {
+.mi-stat-change > summary, .mi-stat-change > .mi-change-summary {
     display: grid;
     grid-template-columns: minmax(72px, .95fr) minmax(16px, .6fr) max-content;
     gap: 6px;
@@ -578,14 +578,14 @@ details.mi-diary[open] .mi-diary-chevron { transform: rotate(180deg); }
 .mi-change-kind { color: var(--mi-muted); }
 .mi-change-range { grid-column: 1 / -1; color: var(--mi-muted); font-variant-numeric: tabular-nums; }
 .mi-host .mi-stat-chip { display: inline-grid; max-width: 100%; grid-template-columns: minmax(0, 1fr) auto; border: 1px solid var(--mi-line); border-radius: 9px; padding: 0 3px 0 7px; background: var(--mi-card); }
-.mi-stat-chip > .mi-stat-change > summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 7px; }
+.mi-stat-chip > .mi-stat-change > :is(summary, .mi-change-summary) { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 7px; }
 .mi-stat-chip .mi-stat-label { color: var(--mi-muted); font-size: .88em; }
 .mi-stat-chip .mi-change-body { max-width: 270px; }
 .mi-pulse-field { display: flex; gap: 5px; align-items: flex-start; min-width: 0; }
 .mi-field-text { flex: 1; min-width: 0; padding: 5px 0; overflow-wrap: anywhere; }
 .mi-field-caption { color: var(--mi-muted); }
 .mi-pulse-field.mi-money { color: var(--mi-text); }
-.mi-money > .mi-stat-change > summary { grid-template-columns: minmax(0, 1fr) max-content; }
+.mi-money > .mi-stat-change > :is(summary, .mi-change-summary) { grid-template-columns: minmax(0, 1fr) max-content; }
 .mi-pulse-more { border-top: 1px dashed var(--mi-line); margin-top: 4px; padding-top: 3px; }
 .mi-pulse-more > summary { padding: 4px 0; color: var(--mi-muted); cursor: pointer; }
 .mi-pulse-more[open] > summary { color: var(--mi-accent); }
@@ -687,3 +687,7 @@ details.mi-diary[open] .mi-diary-chevron { transform: rotate(180deg); }
     .megainfo-settings .mi-ui-tab { padding: 6px; font-size: .86em; }
     .mi-profile-line { flex-wrap: wrap; }
 }
+
+/* Без причин изменений значения не раскрываются. */
+.mi-no-reasons > .mi-change-summary { cursor: default; }
+.mi-aff-changes.mi-no-reasons > .mi-aff-head { margin-bottom: 4px; }

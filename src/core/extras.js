@@ -36,13 +36,11 @@ export function diaryRules(opts, prevDiary) {
     const U = opts.userName || 'User';
     const pron = PRONOUN[opts.pronoun] ?? PRONOUN.they;
     const r = [];
-    r.push(`- diary: ${C}'s private diary entry about the latest events, first person, raw and honest, as a REAL diary — fragments, “…” for broken thoughts, things never said aloud. Language: ${opts.language}.`);
-    r.push(`- diary.entry: ${DIARY_WORDS[cfg.length] ?? DIARY_WORDS.medium} words. ${DIARY_DETAIL[cfg.detail] ?? DIARY_DETAIL.normal}${cfg.secrets ? ' Include a secret, fear or hidden desire.' : ''} Paragraphs separated by \\n\\n. title: 2–5 words.`);
-    if (cfg.aboutUser) r.push(`- diary.about_user: ${C}'s private notes about ${U} — observations, changing feelings, suspicions, attraction or irritation. ${U} is ${pron.en}: use the correct pronouns and grammatical gender for ${U}. About half the length of entry.`);
-    if (cfg.npcs) r.push('- diary.npcs: short first-person entries of 1–2 NPCs who were in the scene (their hidden thoughts, secrets, plans). [] if no NPCs.');
-    if (cfg.gossip) r.push('- diary.gossip: what people around are whispering — gossip, rumors overheard, 1–3 sentences.');
-    r.push('- Write a NEW entry about what just happened. Do not retell older events and do not repeat the previous entry.');
-    r.push('- Put the diary only in the JSON data, not in the story. The system displays the entry directly above or below the reply according to the reader\'s setting; no diary placement marker is needed.');
+    r.push(`- diary: ${C}'s private first-person diary about what JUST happened — raw and honest, fragments, things never said aloud; never retell older events or the previous entry. entry: ${DIARY_WORDS[cfg.length] ?? DIARY_WORDS.medium} words. ${DIARY_DETAIL[cfg.detail] ?? DIARY_DETAIL.normal}${cfg.secrets ? ' Include a secret, fear or hidden desire.' : ''} Paragraphs split by \\n\\n. title: 2–5 words.`);
+    if (cfg.aboutUser) r.push(`- diary.about_user: ${C}'s notes about ${U} (${pron.en}: use matching pronouns and grammatical gender) — observations, changing feelings, suspicions; about half the entry.`);
+    if (cfg.npcs) r.push('- diary.npcs: 1–2 short first-person entries of NPCs from the scene (hidden thoughts, plans), [] if none.');
+    if (cfg.gossip) r.push('- diary.gossip: 1–3 sentences of what people around are whispering.');
+    r.push('- Put the diary only in the JSON data; the system shows it directly above or below the reply.');
     if (prevDiary?.entry) r.push(`  Previous entry began: «${prevDiary.entry.slice(0, 160).replace(/\s+/g, ' ')}…»`);
     return r;
 }
@@ -80,12 +78,10 @@ export function phoneRules(opts, { separate = false } = {}) {
     const exists = opts.phones;
     const reply = separate ? 'the latest story reply' : 'THIS reply';
     const r = [];
-    r.push(`- phone: ONLY if in ${reply} someone actually uses a phone on screen — texts, reads messages or notifications, scrolls social media, sees a post. If nobody touches a phone, OMIT "phone" completely. Never invent phone use just to fill the block.${exists === 'auto' ? ' If phones do not exist in this world (fantasy, historical…), never output it.' : ''}`);
-    r.push('- phone.app: telegram/whatsapp/instagram/twitter/sms/tinder/other. kind: chat | post | notifications. title: chat or profile name.');
-    r.push('- phone.items: for chat — messages in order, dir "out" = sent by the phone owner, "in" = received; short and realistic (typos, slang, no standard emoji — the system draws icons). For post — one item with author, text (caption), likes, comments. For notifications — one item per notification.');
-    r.push(`- phone texts in ${opts.language}.`);
+    r.push(`- phone: ONLY if in ${reply} someone actually uses a phone on screen (texts, reads messages or notifications, scrolls a feed); otherwise omit it, never invent phone use.${exists === 'auto' ? ' Never in worlds without phones.' : ''} app: telegram/whatsapp/instagram/twitter/sms/tinder/other; kind: chat | post | notifications; title: chat or profile name.`);
+    r.push(`- phone.items: chat — messages in order, dir "out" = sent by the phone owner, "in" = received, short and realistic (typos, slang, no emoji); post — one item with author, text, likes, comments; notifications — one item each. Texts in ${opts.language}.`);
     if (!separate) {
-        r.push('- When phone data is present, put [[mi:phone]] on its own line INSIDE the story, immediately after the moment a character reads or sends the shown messages. Continue the story after the marker when appropriate. Use one marker per reply, never put it inside the JSON, and omit it if there is no phone data. The system replaces it with the phone display; do not repeat the messages as an extra status block.');
+        r.push('- With phone data, put [[mi:phone]] on its own line INSIDE the story immediately after the moment the messages are read or sent, then continue. One marker per reply; never put it inside the JSON; omit it without phone data.');
     }
     return r;
 }
@@ -118,18 +114,17 @@ export const CARD_TAG = 'megainfo_html';
 
 export function cardRules(opts, { separate = false } = {}) {
     const when = opts.s.modules.cards.when === 'every' && !separate
-        ? 'ALWAYS add one HTML card that fits the scene (an in-world document, screen, post, letter, note, sign, receipt, profile, newspaper, ticket, menu…).'
-        : 'ONLY if the scene features an in-world document, screen, post, letter, note, sign, receipt, profile, newspaper, ticket, menu or similar artifact — recreate it as an HTML card. Otherwise do NOT add it.';
+        ? 'ALWAYS add one HTML card that fits the scene (an in-world document, screen, post, letter, note, sign, receipt, ticket, menu…).'
+        : 'ONLY if the scene features an in-world document, screen, post, letter, note, sign, receipt, ticket, menu or similar artifact — recreate it as an HTML card. Otherwise do NOT add it.';
     const r = [
         `- HTML card: ${when}`,
-        `  Put the HTML payload at the END (after the JSON block if present) inside <${CARD_TAG}>…</${CARD_TAG}>. One self-contained snippet: a root <div> with inline styles or one <style> block, no scripts, no markdown, no \`\`\`. Max width 100%, readable on a phone (add @media (max-width:760px)). Text in ${opts.language}.`,
-        '  Make it look hyper-realistic and match the setting: modern → pixel-perfect app UI (real platform colors and spacing); sci-fi → holographic, glitch, scan lines; fantasy/medieval → parchment, wax seals, ink; horror → VHS noise, redactions, stains; historical → period typography. Mood colors: warm gold for happy, desaturated blue for sad, high-contrast red for tension, deep purple glow for intimate.',
-        '  Realism: story-accurate timestamps and names, believable numbers, natural typos in casual messages. Use Font Awesome icons (<i class="fa-solid fa-…">) or inline SVG instead of emoji.',
+        `  Put it at the END (after the JSON) inside <${CARD_TAG}>…</${CARD_TAG}>: one root <div> with inline styles or one <style>, no scripts, no markdown, max width 100%, readable on a phone. Text in ${opts.language}.`,
+        '  Match the setting realistically: modern → real app UI, sci-fi → holographic, fantasy → parchment and ink, horror → VHS noise and stains, historical → period typography. Story-accurate names, times and numbers; Font Awesome icons or inline SVG instead of emoji.',
     ];
     if (!separate) {
-        r.push('  Place [[mi:card]] on its own line INSIDE the story exactly where the character sees, reads or handles that artifact, then continue the story. One marker per reply; never put it in the JSON or HTML payload. The system displays the card there. If no card is generated, omit the marker. Do not add an unrelated artifact merely to fill a slot, and do not duplicate a phone display as a second card.');
+        r.push('  Place [[mi:card]] on its own line INSIDE the story where the artifact is seen or handled, then continue; one marker, never inside the JSON or HTML; omit it without a card. Never add an unrelated artifact, and do not duplicate a phone display as a card.');
     } else {
-        r.push('  Recreate only an artifact already present in the latest reply. Do not invent a new artifact or a new action to justify a card.');
+        r.push('  Recreate only an artifact already present in the latest reply. Do not invent a new artifact or action to justify a card.');
     }
     return r;
 }

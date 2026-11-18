@@ -1,7 +1,7 @@
 // Оркестровка: что попросить у модели в этот раз, как разобрать ответ, когда делать отдельный запрос.
 
 import {
-    STAT_DEFS, activeStats, getSettings, moduleOn, MODULE_LIST, phonesExist, userPronoun,
+    STAT_DEFS, activeStats, currencyFor, currencyUnknown, getSettings, moduleOn, MODULE_LIST, phonesExist, rememberCurrency, userPronoun,
 } from './settings.js';
 import {
     applyData, buildContext, buildInstruction, CONTEXTUAL, extractBlocks, Extras, LEGACY_TAGS, Loc,
@@ -58,7 +58,23 @@ export function buildOpts() {
         language: s.language || 'Russian',
         places: getPlaces(),
         phones: phonesExist(s),
+        currency: currencyFor(s),
+        currencyUnknown: currencyUnknown(s),
+        group: groupMembers(),
     };
+}
+
+/** Имена участников текущего группового чата (пусто, если чат не групповой). */
+export function groupMembers() {
+    const c = ctx();
+    if (!c.groupId) return [];
+    try {
+        const group = c.groups?.find((g) => g.id === c.groupId);
+        // Заглушённые участники тоже остаются в истории, поэтому учитываем всех.
+        return (group?.members ?? []).map((avatar) => c.characters?.find((ch) => ch.avatar === avatar)?.name).filter(Boolean);
+    } catch {
+        return [];
+    }
 }
 
 /** Теги, которые вырезаются из истории перед отправкой модели. */
@@ -163,6 +179,7 @@ function storeResult(id, message, res, { scene }) {
     if (res.diary) setData(message, 'diary', res.diary);
     if (res.phone) setData(message, 'phone', res.phone);
     if (res.card) setData(message, 'card', res.card);
+    if (res.currencyAsked) rememberCurrency(res.currency);
     if (res.place) {
         savePlace(res.place, id);
         setData(message, 'newPlace', res.place.name);

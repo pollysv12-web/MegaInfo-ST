@@ -1,5 +1,4 @@
-// Gameplay presets only: connection settings, themes, custom CSS and chat data
-// are deliberately outside their scope.
+// Игровые наборы. Подключение, темы, свой CSS и данные чатов они не трогают.
 import { DEFAULTS } from './settings.js';
 
 const enabled = (keys) => Object.fromEntries(Object.keys(DEFAULTS.modules).map(k => [k, { enabled: keys.includes(k) }]));
@@ -30,15 +29,15 @@ export const PRESETS = Object.freeze([
     }),
 ]);
 
-/** Applies an explicitly selected preset; it never touches connection or data. */
+/** Применяет выбранный набор; подключение и данные чатов не меняются. */
 export function applyPreset(settings, id) {
     const p = PRESETS.find(p => p.id === id);
     if (!p) return false;
     settings.modules ??= {};
     for (const key of Object.keys(DEFAULTS.modules)) {
         settings.modules[key] ??= structuredClone(DEFAULTS.modules[key]);
-        // Reset gameplay knobs governed by presets so a later selection does
-        // not retain the preceding scenario's pace or lite/full variant.
+        // Сбрасываем параметры, которыми управляют наборы, чтобы новый набор
+        // не унаследовал темп или вариант Пульса от предыдущего.
         const resets = {
             sims: ['variant'], relations: ['maxStep'], slowburn: ['speed', 'influence', 'strict', 'dayLock'],
             world: ['threads', 'threadLimit', 'tension', 'tensionActive', 'tensionSlow', 'twists', 'rumors'],

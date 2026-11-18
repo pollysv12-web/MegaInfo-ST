@@ -1,7 +1,7 @@
 // Отрисовка панели инфоблока для одного сообщения: шапка + вкладки (или блоки друг под другом).
 // Здесь только HTML-строки — никакой логики подсчёта.
 
-import { STAT_DEFS, getSettings } from './settings.js';
+import { STAT_DEFS } from './settings.js';
 import { Extras, Loc, Marks, People, Slow } from './core/engine.js';
 import { trackingFor } from './tracking.js';
 import {
@@ -41,6 +41,11 @@ const para = (t) => (t ? `<p>${nl2br(t)}</p>` : '');
 // ---------------------------------------------------------------- персонажи (sims)
 
 const EMOTIONAL = { label: 'Возбуждение', icon: 'fa-face-smile-beam' };
+/** Подсказки при наведении: страсть и возбуждение легко спутать. */
+const HINT = {
+    arousal: 'Страсть — только сексуальное возбуждение.',
+    excitement: 'Возбуждение — эмоциональный подъём: радость, азарт, предвкушение, адреналин. Не сексуальное.',
+};
 const CHANGE_KINDS = { time: 'По времени', event: 'В сцене', initial: 'Начальное значение', manual: 'Вручную' };
 
 function pulseMode(opts, key, fallback = 'show') {
@@ -89,17 +94,27 @@ function reasonBody(person, key, state) {
         + (Number.isFinite(e.from) && Number.isFinite(e.to) ? `<span class="mi-change-range">${esc(e.from)} → ${esc(e.to)}</span>` : '') + '</li>').join('') + '</ul>';
 }
 
+const ARROW = '<!--mi-arrow-->';
+
+/** Значение с раскрываемыми причинами; без причин — просто строка. */
+function changeBlock(opts, person, key, state, { cls = 'mi-stat-change', summaryCls = '', title, inner }) {
+    if (opts.s.modules.sims.reasons === false) {
+        return `<div class="${cls} mi-no-reasons"><div class="mi-change-summary${summaryCls ? ' ' + summaryCls : ''}" title="${esc(title)}">${inner.replace(ARROW, '')}</div></div>`;
+    }
+    return `<details class="${cls}" data-mi-sec="change:${esc(person.id)}:${esc(key)}"><summary${summaryCls ? ` class="${summaryCls}"` : ''} title="${esc(`${title}\n${reasonText(person, key, state)}`)}">${inner.replace(ARROW, icon('fa-angle-down'))}</summary>`
+        + `<div class="mi-change-body">${reasonBody(person, key, state)}</div></details>`;
+}
+
 function statRow(person, key, value, diff, view, crit, opts, state, editable) {
     value = Math.round(Math.min(100, Math.max(0, Number(value) || 0)));
     const def = key === 'excitement' ? EMOTIONAL : STAT_DEFS[key];
     if (!def) return '';
-    const title = `${def.label}: ${value}%.\n${key === 'excitement' ? 'Радость, азарт и предвкушение; не сексуальная страсть.\n' : ''}${reasonText(person, key, state)}`;
-    return `<div class="mi-stat${view === 'chips' ? ' mi-stat-chip' : ''}${crit ? ' mi-crit' : ''}" data-mi-stat="${esc(key)}">`
-        + `<details class="mi-stat-change" data-mi-sec="change:${esc(person.id)}:${esc(key)}"><summary title="${esc(title)}">`
-        + `<span class="mi-stat-label">${icon(def.icon)}${esc(def.label)}</span>`
+    const title = `${def.label}: ${value}%.${HINT[key] ? `\n${HINT[key]}` : ''}`;
+    const inner = `<span class="mi-stat-label">${icon(def.icon)}${esc(def.label)}</span>`
         + (view === 'chips' ? '' : `<span class="mi-bar"><span class="mi-bar-fill mi-stat-${esc(key)}" style="width:${value}%"></span></span>`)
-        + `<span class="mi-stat-val">${value}%${delta(diff)}${icon('fa-angle-down')}</span></summary>`
-        + `<div class="mi-change-body">${reasonBody(person, key, state)}</div></details>`
+        + `<span class="mi-stat-val">${value}%${delta(diff)}${ARROW}</span>`;
+    return `<div class="mi-stat${view === 'chips' ? ' mi-stat-chip' : ''}${crit ? ' mi-crit' : ''}" data-mi-stat="${esc(key)}">`
+        + changeBlock(opts, person, key, state, { title, inner })
         + editButton(person, key, def.label, opts, editable) + '</div>';
 }
 
@@ -109,8 +124,9 @@ function textField(p, key, label, glyph, value, opts, editable, { thought = fals
 }
 
 function moneyField(p, opts, state, editable) {
-    const money = p.money === null || p.money === undefined ? 'Не указано' : formatMoney(p.money, opts.s.modules.sims.currency);
-    return `<div class="mi-pulse-field mi-money"><details class="mi-stat-change" data-mi-sec="change:${esc(p.id)}:money"><summary title="${esc(reasonText(p, 'money', state))}"><span class="mi-field-text">${icon('fa-wallet')}Деньги</span><span class="mi-stat-val">${esc(money)}${icon('fa-angle-down')}</span></summary><div class="mi-change-body">${reasonBody(p, 'money', state)}</div></details>${editButton(p, 'money', 'Деньги', opts, editable)}</div>`;
+    const money = p.money === null || p.money === undefined ? 'Не указано' : formatMoney(p.money, opts.currency);
+    const inner = `<span class="mi-field-text">${icon('fa-wallet')}Деньги</span><span class="mi-stat-val">${esc(money)}${ARROW}</span>`;
+    return `<div class="mi-pulse-field mi-money">${changeBlock(opts, p, 'money', state, { title: `Деньги: ${money}`, inner })}${editButton(p, 'money', 'Деньги', opts, editable)}</div>`;
 }
 
 function personCard(p, opts, warnings, { showRel = false, editable = true, state } = {}) {
@@ -178,7 +194,7 @@ function profileSection(state, people, opts) {
             const p = people.find((x) => t.who === x.id || t.who === x.name);
             return p && trackingFor(p, opts.s).detail !== 'off' && trackingFor(p, opts.s).fields.money;
         });
-        if (visible.length) tx = '<div class="mi-tx">' + visible.map((t) => `<span class="mi-tx-item ${t.amount > 0 ? 'mi-up' : 'mi-down'}">${esc(formatMoney(t.amount, cfg.currency))}${t.note ? ' · ' + esc(t.note) : ''}<span class="mi-tx-who">${esc(t.who)}</span></span>`).join('') + '</div>';
+        if (visible.length) tx = '<div class="mi-tx">' + visible.map((t) => `<span class="mi-tx-item ${t.amount > 0 ? 'mi-up' : 'mi-down'}">${esc(formatMoney(t.amount, opts.currency))}${t.note ? ' · ' + esc(t.note) : ''}<span class="mi-tx-who">${esc(t.who)}</span></span>`).join('') + '</div>';
     }
     if (!rows.length && !tx) return '';
     const body = `<div class="mi-profiles">${rows.join('')}</div>${tx}`;
@@ -193,8 +209,9 @@ function affBar(p, opts) {
     const v = Math.round(p.aff ?? 0);
     const pos = (v + 100) / 2;
     const U = opts.userName || 'User';
+    const inner = `<span>${icon('fa-heart')}${esc(p.rel || 'отношение')}</span><span class="mi-aff-val">${v > 0 ? '+' : ''}${v}${delta(p.affDiff)}${ARROW}</span>`;
     return `<div class="mi-aff" title="Симпатия к ${esc(U)}: ${v} (от −100 до 100)">`
-        + `<details class="mi-aff-changes" data-mi-sec="change:${esc(p.id)}:aff"><summary class="mi-aff-head" title="${esc(reasonText(p, 'aff'))}"><span>${icon('fa-heart')}${esc(p.rel || 'отношение')}</span><span class="mi-aff-val">${v > 0 ? '+' : ''}${v}${delta(p.affDiff)}${icon('fa-angle-down')}</span></summary><div class="mi-change-body">${reasonBody(p, 'aff')}</div></details>`
+        + changeBlock(opts, p, 'aff', null, { cls: 'mi-aff-changes', summaryCls: 'mi-aff-head', title: `Симпатия к ${U}: ${v}`, inner })
         + `<div class="mi-aff-track"><span class="mi-aff-mark" style="left:${pos}%"></span></div>`
         + '</div>';
 }
@@ -562,11 +579,18 @@ export function mountCard(el, html) {
         if (/fontawesome|font-awesome|\/all\.min\.css/i.test(l.href)) root.appendChild(l.cloneNode());
     });
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;max-width:100%;overflow-x:auto}*{box-sizing:border-box;max-width:100%}img{height:auto}';
+    // contain: карточка с position:fixed не может растянуться на всё окно таверны.
+    style.textContent = ':host{display:block;position:relative;max-width:100%;overflow:auto;contain:layout paint;isolation:isolate}*{box-sizing:border-box;max-width:100%}img{height:auto}';
     root.appendChild(style);
     const wrap = document.createElement('div');
     wrap.innerHTML = clean || '<i>Карточка пуста или заблокирована.</i>';
+    // Элементы «поверх всего» встают в поток карточки, а не закрывают окно таверны.
+    for (const node of wrap.querySelectorAll('[style]')) {
+        if (/fixed|sticky/i.test(node.style.position)) {
+            node.style.position = 'relative';
+            for (const side of ['inset', 'top', 'right', 'bottom', 'left']) node.style.removeProperty(side);
+        }
+    }
     root.appendChild(wrap);
 }
 
-export { getSettings };

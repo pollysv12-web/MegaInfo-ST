@@ -4,7 +4,7 @@
 import { MODULE, VERSION, getSettings, saveSettings } from './src/settings.js';
 import { OUR_TAGS } from './src/core/engine.js';
 import { addPocketItem, dismissMark, dismissThread, getData, getMessage, isBotMessage, lastBotMessageId, saveChat, setData, updatePocket } from './src/store.js';
-import { editPulseField, PULSE_FIELDS, pulseValue } from './src/manual.js';
+import { editPulseField, PULSE_FIELDS, pulseValue, validateState } from './src/manual.js';
 import {
     allTrackerModules, blockingJobs, buildOpts, cleanForPrompt, clearPending, handleEdited, handleReceived, injectionFor, pending, pendingDiary, runSeparate,
     setChangeListener,
@@ -14,7 +14,7 @@ import { renderInline } from './src/inline.js';
 import { initSettingsUi, loadValues, refreshTokenStats } from './src/ui-settings.js';
 import { addWandButton } from './src/quick.js';
 import * as Log from './src/log.js';
-import { stripTagBlocks } from './src/util.js';
+import { esc as escapeHtml, stripTagBlocks } from './src/util.js';
 
 const PROMPT_KEY = 'megainfo_inject';
 const ctx = () => SillyTavern.getContext();
@@ -52,10 +52,16 @@ globalThis.megaInfoInterceptor = async function (chat, _contextSize, _abort, typ
         // 3. Если ещё не закончился отдельный запрос за блоком — подождём (до 20 сек), чтобы состояние было свежим.
         const jobs = blockingJobs();
         if (jobs.length) {
-            await Promise.race([
-                Promise.allSettled(jobs),
-                new Promise((r) => setTimeout(r, 20000)),
+            const notice = toastr.info('Досчитываю инфоблок прошлого ответа, затем отправлю запрос (не больше 20 секунд).', 'MegaInfo', { timeOut: 0, extendedTimeOut: 0 });
+            const done = await Promise.race([
+                Promise.allSettled(jobs).then(() => true),
+                new Promise((r) => setTimeout(() => r(false), 20000)),
             ]);
+            toastr.clear(notice);
+            if (!done) {
+                Log.warn('инфоблок прошлого ответа не успел за 20 секунд — запрос отправлен с прежним состоянием');
+                toastr.warning('Инфоблок прошлого ответа не успел — модель получит прежнее состояние.', 'MegaInfo');
+            }
         }
         // 4. Вставляем инструкцию + текущее состояние.
         const c = ctx();
@@ -75,14 +81,14 @@ globalThis.megaInfoInterceptor = async function (chat, _contextSize, _abort, typ
 
 // ------------------------------------------------------------------ отрисовка
 
-/** Входит ли сообщение в последние N ответов бота. */
-function shouldShow(messageId) {
+/** id ответов бота, на которых показывается панель (null — на всех). */
+function visibleBotIds() {
     const n = Number(getSettings().showOnLast) || 0;
-    if (n <= 0) return true;
+    if (n <= 0) return null;
     const { chat } = ctx();
-    let count = 0;
-    for (let i = chat.length - 1; i >= messageId; i--) if (isBotMessage(chat[i])) count++;
-    return count <= n;
+    const ids = new Set();
+    for (let i = chat.length - 1; i >= 0 && ids.size < n; i--) if (isBotMessage(chat[i])) ids.add(i);
+    return ids;
 }
 
 function applyDynamicStyles() {
@@ -97,7 +103,12 @@ function applyDynamicStyles() {
     $style.text(`.mi-host{--mi-font-scale:${fontScale}}\n` + custom + '\n' + String(s.customCss ?? ''));
 }
 
-function render(messageId) {
+/**
+ * Перерисовывает панели одного сообщения.
+ * @param {number} messageId
+ * @param {{opts?: object, visible?: Set<number>|null, lastId?: number}} [shared] общие данные для renderAll
+ */
+function render(messageId, shared = {}) {
     const id = Number(messageId);
     const $mes = $(`#chat .mes[mesid="${id}"]`);
     if (!$mes.length) return;
@@ -107,7 +118,9 @@ function render(messageId) {
     const s = getSettings();
     const message = getMessage(id);
     if (!isBotMessage(message)) return;
-    const opts = buildOpts();
+    const opts = shared.opts ?? buildOpts();
+    const visible = shared.visible === undefined ? visibleBotIds() : shared.visible;
+    const lastId = shared.lastId ?? lastBotMessageId();
     const data = getData(message);
     const $text = $block.children('.mes_text');
     renderInline($text[0], data, opts);
@@ -122,11 +135,11 @@ function render(messageId) {
         if (s.modules.diary.placement === 'top') $text.before($diary);
         else $text.after($diary);
     }
-    if (!isPending && !shouldShow(id)) { restoreDetails($mes, message); return; }
+    if (!isPending && visible && !visible.has(id)) { restoreDetails($mes, message); return; }
 
     const collapsed = data?.ui?.collapsed ?? !!s.collapsed;
     const html = renderPanel({
-        data, opts, pending: isPending, isLast: id === lastBotMessageId(), collapsed, activeTab: s.lastTab,
+        data, opts, pending: isPending, isLast: id === lastId, collapsed, activeTab: s.lastTab,
     });
     if (!html) { restoreDetails($mes, message); return; }
 
@@ -163,9 +176,28 @@ function onDetailsToggle(event) {
 
 export function renderAll() {
     const { chat } = ctx();
+    const shared = { opts: buildOpts(), visible: visibleBotIds(), lastId: lastBotMessageId() };
     $('#chat .mes').each(function () {
         const id = Number($(this).attr('mesid'));
-        if (Number.isFinite(id) && id < chat.length) render(id);
+        if (Number.isFinite(id) && id < chat.length) render(id, shared);
+    });
+}
+
+/**
+ * Новый ответ бота: рисуем только его, убираем панели, вышедшие за «последние N»,
+ * и обновляем прежний последний ответ, если на нём висела кнопка «Создать».
+ */
+function renderNewMessage(messageId) {
+    const shared = { opts: buildOpts(), visible: visibleBotIds(), lastId: lastBotMessageId() };
+    render(messageId, shared);
+    $('#chat .mes').each(function () {
+        const id = Number($(this).attr('mesid'));
+        if (!Number.isFinite(id) || id === Number(messageId)) return;
+        const $info = $(this).find('.mes_block').first().children('.mi-info-host');
+        if (!$info.length) return;
+        const outOfRange = shared.visible && !shared.visible.has(id) && !pending.has(id);
+        if (outOfRange) $info.remove();
+        else if ($info.find('.mi-missing').length) render(id, shared);
     });
 }
 
@@ -176,20 +208,33 @@ async function editState(messageId) {
     const message = getMessage(messageId);
     const state = getData(message)?.state;
     if (!state) return;
-    const value = await c.callGenericPopup(
-        '<b>Значения инфоблока</b><br><small>Можно поправить числа, деньги, имена, симпатию, следы. Сохраняется для этого сообщения; следующие блоки будут считаться от него.</small>',
-        c.POPUP_TYPE.INPUT,
-        JSON.stringify(state, null, 2),
-        { rows: 24, wide: true, large: true, okButton: 'Сохранить', cancelButton: 'Отмена' },
-    );
-    if (!value || typeof value !== 'string') return;
-    try {
-        setData(message, 'state', JSON.parse(value));
+    let text = JSON.stringify(state, null, 2);
+    // Ошибочный JSON не сохраняется: окно открывается снова с введённым текстом.
+    for (;;) {
+        const value = await c.callGenericPopup(
+            '<b>Значения инфоблока</b><br><small>Числа, деньги, имена, симпатия, следы. Сохраняется для этого сообщения; следующие блоки будут считаться от него.</small>',
+            c.POPUP_TYPE.INPUT, text,
+            { rows: 24, wide: true, large: true, okButton: 'Сохранить', cancelButton: 'Отмена' },
+        );
+        if (!value || typeof value !== 'string') return;
+        text = value;
+        let parsed;
+        try {
+            parsed = JSON.parse(value);
+        } catch (e) {
+            toastr.error(`JSON не читается: ${e.message}`, 'MegaInfo');
+            continue;
+        }
+        const { state: next, errors } = validateState(parsed);
+        if (errors.length) {
+            toastr.error(errors.slice(0, 5).map(escapeHtml).join('<br>'), 'MegaInfo: блок не сохранён', { escapeHtml: false, timeOut: 12000 });
+            continue;
+        }
+        setData(message, 'state', next);
         await saveChat();
         render(messageId);
         toastr.success('Сохранено', 'MegaInfo');
-    } catch (e) {
-        toastr.error('Не получилось прочитать JSON: ' + e.message, 'MegaInfo');
+        return;
     }
 }
 
@@ -331,9 +376,7 @@ async function init() {
     };
 
     eventSource.on(E.MESSAGE_RECEIVED, safe(handleReceived));
-    // предыдущие ответы могли выйти за «последние N» — перерисовываем все
-    eventSource.on(E.CHARACTER_MESSAGE_RENDERED, safe(() => renderAll()));
-    eventSource.on(E.USER_MESSAGE_RENDERED, safe(() => renderAll()));
+    eventSource.on(E.CHARACTER_MESSAGE_RENDERED, safe((id) => renderNewMessage(Number(id))));
     eventSource.on(E.MESSAGE_SWIPED, safe((id) => setTimeout(() => render(Number(id)), 0)));
     eventSource.on(E.MESSAGE_EDITED, safe(handleEdited));
     eventSource.on(E.MESSAGE_UPDATED, safe((id) => render(Number(id))));

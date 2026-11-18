@@ -21,20 +21,20 @@ const main = [
 const request = new Set(['sims', 'relations']);
 const apply = (opts, people, base = null) => applyData({ base, data: { date: '11.11.2026', time: '17:00', people }, request, opts }).state;
 
-test('a pinned NPC supplied last receives the limited NPC slot without moving bot/user', () => {
+test('закреплённый NPC в конце списка получает место в лимите, бот и игрок не сдвигаются', () => {
     const opts = options();
     const people = [...main, { name: 'Охранник', role: 'npc', mood: 'серьёзен' }, { name: 'Прохожий', role: 'npc' }, { name: 'Кира', role: 'npc', mood: 'рада встрече', new: { stats: { food: 45 }, money: 1200 } }];
     const before = structuredClone(people);
     const state = apply(opts, people);
     assert.deepEqual(state.scene, ['алекс', 'user', 'кира']);
-    assert.equal(state.people.кира.stats.food, 45, 'pinned NPC uses detailed tracking');
+    assert.equal(state.people.кира.stats.food, 45, 'закреплённый NPC ведётся подробно');
     assert.equal(state.people.кира.money, 1200);
     assert.equal(state.people.охранник, undefined);
     assert.equal(state.people.прохожий, undefined);
-    assert.deepEqual(people, before, 'model input and its order remain unchanged');
+    assert.deepEqual(people, before, 'данные модели и их порядок не меняются');
 });
 
-test('a pinned existing NPC still updates when a new NPC appears first at the cap', () => {
+test('закреплённый NPC обновляется, даже если новый NPC пришёл первым при заполненном лимите', () => {
     const opts = options();
     const first = apply(opts, [...main, { name: 'Кира', role: 'npc', mood: 'спокойна', new: { stats: { food: 45 } } }]);
     const state = apply(opts, [...main, { name: 'Охранник', role: 'npc' }, { name: 'КИРА', role: 'npc', mood: 'встревожена', d: { food: 10 } }], first);
@@ -44,17 +44,17 @@ test('a pinned existing NPC still updates when a new NPC appears first at the ca
     assert.equal(state.people.охранник, undefined);
 });
 
-test('an absent pinned NPC is not manufactured or placed back in the scene', () => {
+test('отсутствующий закреплённый NPC не создаётся и не возвращается в сцену', () => {
     const opts = options();
     const initial = apply(opts, [...main, { name: 'Кира', role: 'npc', mood: 'спокойна' }]);
     const state = apply(opts, [...main, { name: 'Охранник', role: 'npc' }], initial);
     assert.deepEqual(state.scene, ['алекс', 'user', 'охранник']);
-    assert.equal(state.people.кира.mood, 'спокойна', 'known absent person remains in memory');
+    assert.equal(state.people.кира.mood, 'спокойна', 'знакомый, но отсутствующий человек остаётся в памяти');
     const fresh = apply(opts, [...main, { name: 'Охранник', role: 'npc' }]);
-    assert.equal(fresh.people.кира, undefined, 'pin alone never creates someone');
+    assert.equal(fresh.people.кира, undefined, 'закрепление само по себе никого не создаёт');
 });
 
-test('an explicit zero NPC limit continues to exclude even the pinned NPC', () => {
+test('лимит NPC, равный нулю, исключает и закреплённого', () => {
     const state = apply(options(0), [...main, { name: 'Кира', role: 'npc', new: { stats: { food: 50 } } }]);
     assert.deepEqual(state.scene, ['алекс', 'user']);
     assert.equal(state.people.кира, undefined);

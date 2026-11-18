@@ -18,7 +18,7 @@
 
     function makeBlock(instr) {
         const f = formatKeys(instr);
-        const firstTime = /CURRENT STATE: none yet/.test(instr);
+        const firstTime = /STATE: none yet/.test(instr);
         const data = {};
         if ('time' in f) {
             clock += 20;
@@ -36,7 +36,7 @@
         if (f.slowburn) data.slowburn = { d: 1, moment: '' };
         if (f.marks) data.marks = { add: firstTime ? [{ who: 'Миша', kind: 'bruise', where: 'запястье', sev: 1, note: 'ударился' }] : [], heal: [] };
         if (f.place) {
-            const described = instr.match(/Already described places: ([^\n]*)/)?.[1] ?? '';
+            const described = instr.match(/Described places: ([^\n]*)/)?.[1] ?? '';
             if (!described.includes(window.__location)) {
                 data.place = { name: window.__location, look: `Описание места ${window.__location}.`, details: 'Столики, стойка.', mood: 'Тихо, пахнет кофе.' };
             }

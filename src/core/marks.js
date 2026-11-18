@@ -92,23 +92,22 @@ export function markStatus(mark, state, opts) {
 }
 
 const NOTICE_RULES = {
-    subtle: 'People notice a visible mark only if it is obvious or they are close; minor marks (sev 1) at most get a glance or one casual remark — no drama, no interrogation, no fixation. Covered marks are invisible to others.',
-    normal: 'People notice visible marks realistically: close friends or partners may ask once; strangers mostly ignore them. Covered marks are invisible to others.',
-    dramatic: 'Visible marks draw attention and can trigger questions, gossip or jealousy, proportional to how striking they are. Covered marks are invisible to others.',
+    subtle: 'Others notice only obvious marks up close; a minor one gets at most a glance or one casual remark.',
+    normal: 'Close people may ask once about a visible mark; strangers mostly ignore it.',
+    dramatic: 'Visible marks draw attention, questions, gossip or jealousy in proportion to how striking they are.',
 };
 
 export function stateLines(state, opts) {
     const marks = (state?.marks ?? []).filter((m) => isTracked(m, opts));
     if (!marks.length) return [];
-    const lines = ['Marks on bodies (they heal over story time by themselves — keep them consistent, mention only when relevant):'];
+    const lines = ['Marks on bodies (they heal by themselves over story time; mention only when relevant):'];
     for (const m of marks.slice(-14)) {
         const st = markStatus(m, state, opts);
-        const remaining = st.left < DAY ? `~${Math.max(1, Math.ceil(st.left / 60))} ч.` : `~${Math.max(1, Math.ceil(st.left / DAY))} дн.`;
-        const day = st.permanent ? st.stage : `${st.stage}, ${remaining} до ${KINDS[m.kind]?.retained ? 'заживления' : 'восстановления'}`;
-        lines.push(`  [${m.id}] ${m.who}: ${KINDS[m.kind]?.label ?? m.kind} — ${m.where}${m.note ? ` (${m.note})` : ''}; тяжесть ${m.sev}/3; ${day}.`);
+        const remaining = st.left < DAY ? `~${Math.max(1, Math.ceil(st.left / 60))} h` : `~${Math.max(1, Math.ceil(st.left / DAY))} d`;
+        const day = st.permanent ? st.stage : `${st.stage}, ${remaining} left`;
+        lines.push(`  [${m.id}] ${m.who}: ${KINDS[m.kind]?.label ?? m.kind} — ${m.where}${m.note ? ` (${m.note})` : ''}; sev ${m.sev}/3; ${day}.`);
     }
-    lines.push(`  A mark is visible only where the current outfit does not cover that body part. ${NOTICE_RULES[opts.s.modules.marks.notice] ?? NOTICE_RULES.subtle}`);
-    lines.push('  Healing is approximate story-time recovery, not instant fitness: major wounds limit activity while healing. Do not invent complications, scars, fresh injuries or repeated reactions without a story event. Washing removes paint when the story says so; henna and suntan fade gradually.');
+    lines.push(`  A mark is visible only where the outfit does not cover it. ${NOTICE_RULES[opts.s.modules.marks.notice] ?? NOTICE_RULES.subtle} Serious injuries limit activity while healing.`);
     return lines;
 }
 
@@ -117,16 +116,13 @@ export function schema() {
 }
 
 export function rules(state, opts) {
-    const rules = [
-        `- marks.add: ONLY new physical marks that appeared in THIS reply on anyone present: [{"who":"name","kind":"one of ${Object.keys(KINDS).join('/')}","where":"exact body spot","sev":1,"note":"cause, 2–4 words"}]. sev: 1 minor, 2 noticeable, 3 serious. Usually [].`,
-        '- marks.heal: ids of marks actually resolved early by an explicit story event, e.g. ["m2"] after washing off paint or effective healing magic. Usually []. Ordinary bandages, makeup or clothing do not cure an injury. Normal healing is computed by the system — never heal marks just because time passed.',
-        '- Track consequences of events already in the story, never invent an injury just to fill this module. Choose gunshot/stab/frostbite for those injuries; paint/henna/tan/redness for skin colour changes. Normal blushing is brief: do not add it every reply. Never add congenital features, existing tattoos, piercings or old marks from a character description.',
-        '- Never repeat an existing mark in add. Use a new entry with "reinjured":true ONLY when this reply explicitly injures the SAME spot again; otherwise keep its original healing clock. Physical injury is not cured by covering it with clothing or makeup.',
+    const permanent = opts.s.modules.marks.trackPermanent === true;
+    const kinds = Object.keys(KINDS).filter((k) => permanent || !BODY_MODS.has(k)).join('/');
+    return [
+        `- marks.add: only NEW physical marks caused in THIS reply: [{"who":"name","kind":"${kinds}","where":"body spot","sev":1,"note":"cause"}] (sev 1 minor, 2 noticeable, 3 serious). Usually []. Never invent injuries, never add marks from a character description, no brief blushing. Same spot hurt again → add with "reinjured":true; otherwise never repeat a mark.`,
+        '- marks.heal: ids cured early by an explicit story event (paint washed off, healing magic). Normal healing is computed by the system; bandages, makeup or clothes cure nothing.',
+        permanent ? '- tattoo/piercing: only if acquired in THIS scene, with "acquired":true.' : '- Tattoos and piercings are not tracked.',
     ];
-    rules.push(opts.s.modules.marks.trackPermanent === true
-        ? '- New tattoo/piercing: track only if acquired during THIS scene, with "acquired":true. Fresh skin heals first; the tattoo or piercing remains afterwards. No pre-existing body modifications.'
-        : '- Tattoo/piercing tracking is OFF. Do not include them, even if new. Other injuries still count.');
-    return rules;
 }
 
 export function apply(next, base, data, opts) {

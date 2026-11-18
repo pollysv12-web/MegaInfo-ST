@@ -31,21 +31,27 @@ function fixture() {
 
 const panel = (f) => renderPanel({ data: { state: f.state }, opts: f.opts });
 
-test('emotional excitement and sexual passion have separate values and accessible disclosures', () => {
+test('возбуждение и страсть показываются отдельно, причины раскрываются и выключаются', () => {
     const f = fixture();
     const html = panel(f);
     assert.match(html, /data-mi-stat="arousal"[\s\S]*?Страсть: 7%/);
     assert.match(html, /data-mi-stat="excitement"[\s\S]*?Возбуждение: 0%/);
-    assert.match(html, /Радость, азарт и предвкушение; не сексуальная страсть/);
+    assert.match(html, /радость, азарт, предвкушение, адреналин\. Не сексуальное/);
+    assert.match(html, /Страсть — только сексуальное возбуждение/);
     assert.match(html, /<details class="mi-stat-change" data-mi-sec="change:char:food"><summary title=/);
     assert.match(html, /По времени −5: Прошёл игровой час/);
     assert.match(html, /В сцене \+20: Поел супа/);
     assert.match(html, /50 → 45/);
     assert.match(html, /45 → 65/);
     assert.match(html, />Slow burn<\/span>/);
+    f.opts.s.modules.sims.reasons = false;
+    const plain = panel(f);
+    assert.doesNotMatch(plain, /data-mi-sec="change:/, 'без причин значения не раскрываются');
+    assert.doesNotMatch(plain, /Поел супа/);
+    assert.match(plain, /mi-no-reasons/);
 });
 
-test('each Pulse value can be edited without exposing field pencils in other panes', () => {
+test('каждое значение Пульса правится карандашиком, в других вкладках карандашей нет', () => {
     const f = fixture();
     const html = panel(f);
     const pulse = html.slice(html.indexOf('data-mi-pane="chars"'), html.indexOf('data-mi-pane="npc"'));
@@ -57,7 +63,7 @@ test('each Pulse value can be edited without exposing field pencils in other pan
     assert.doesNotMatch(panel(f), /data-mi-act="edit-field"/);
 });
 
-test('Pulse hidden and collapsed options actually change output and tracking choices are independent', () => {
+test('скрытые и свёрнутые поля Пульса действительно меняют вывод', () => {
     const f = fixture();
     f.opts.s.display.pulse.outfit = 'collapse';
     f.opts.s.display.pulse.money = 'hide';
@@ -71,7 +77,7 @@ test('Pulse hidden and collapsed options actually change output and tracking cho
     assert.doesNotMatch(panel(f), /Синий свитер|Приятно увидеть его/);
 });
 
-test('short NPCs stay brief while a pinned or specifically selected NPC exposes requested state', () => {
+test('краткие NPC остаются краткими, закреплённый или выбранный показывает запрошенное', () => {
     const f = fixture();
     let html = panel(f);
     let npc = html.slice(html.indexOf('data-mi-pane="npc"'), html.indexOf('data-mi-pane="rel"'));
@@ -90,7 +96,7 @@ test('short NPCs stay brief while a pinned or specifically selected NPC exposes 
     assert.doesNotMatch(panel(f), /data-mi-pane="npc"/);
 });
 
-test('tab order, pocket CRUD controls and dismissible story threads are rendered with safe identifiers', () => {
+test('порядок вкладок, кнопки кармашка и удаление нитей используют безопасные id', () => {
     const f = fixture();
     f.opts.s.display.tabOrder = ['pocket', 'world', 'chars'];
     const html = panel(f);

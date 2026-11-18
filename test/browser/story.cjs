@@ -1,9 +1,10 @@
-// Браузерный тест на макете SillyTavern: npm run test:browser
-// node test/browser/run.cjs <extDir> <node_modules с jquery и dompurify> [папка для скриншотов]
+// Браузерный сценарий длинной игры на макете SillyTavern: ответы, отдельные запросы, ошибки модели.
+// node test/browser/story.cjs [<extDir> <node_modules с jquery и dompurify> [папка для скриншотов]]
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const chromiumPath = require('./chromium.cjs');
 
 const [extDir = path.join(__dirname, '../..'), depsDir = path.join(__dirname, '../../node_modules'), shotsDir = path.join(__dirname, 'shots')] = process.argv.slice(2);
 const roots = { '/ext/': extDir, '/deps/': depsDir, '/harness/': __dirname };
@@ -34,7 +35,7 @@ function check(name, ok, info = '') {
     const port = server.address().port;
     fs.mkdirSync(shotsDir, { recursive: true });
     const browser = await chromium.launch({
-        executablePath: process.env.MEGAINFO_CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),
+        executablePath: chromiumPath(),
         args: ['--no-sandbox'],
     });
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
@@ -80,7 +81,7 @@ function check(name, ok, info = '') {
     }
     const prompts = await page.evaluate(() => window.__st.prompts);
     check('в историю модели не попадает ни одного блока или маркера вставки', prompts.every((p) => p.history.every((h) => !/<megainfo|\[\[mi:(?:phone|card)\]\]/.test(h))));
-    check('каждый обычный запрос получил инструкцию с текущим состоянием', prompts.slice(1).every((p) => /CURRENT STATE \(calculated/.test(p.injection)), prompts.map((p) => p.injection.length).join(','));
+    check('каждый обычный запрос получил инструкцию с текущим состоянием', prompts.slice(1).every((p) => /STATE \(computed/.test(p.injection)), prompts.map((p) => p.injection.length).join(','));
     const lb1 = await lastBot();
     const st1 = lb1.data.state;
     check('деньги считаются по каждой трате', st1.people['алекс'].money === 20000 - 350 * 12, String(st1.people['алекс'].money));
@@ -204,7 +205,7 @@ function check(name, ok, info = '') {
     await send('Режим separate', 'good');
     const sp = await lastBot();
     const lastPrompt = await page.evaluate(() => window.__st.prompts.at(-1).injection);
-    check('separate: в обычный запрос не просим блок', !/status tracker/.test(lastPrompt) && /current story state/.test(lastPrompt));
+    check('separate: в обычный запрос не просим блок', !/status tracker/.test(lastPrompt) && /story state computed/.test(lastPrompt));
     check('separate: блок пришёл отдельным запросом', !!sp.data?.state && (await page.evaluate(() => window.__calls.raw)) > rawBefore);
 
     // ---------------------------------------------------------- 6. отдельный запрос сломался

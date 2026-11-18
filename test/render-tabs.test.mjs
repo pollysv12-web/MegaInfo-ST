@@ -32,7 +32,7 @@ function pane(html, key) {
     return html.slice(start, next < 0 ? undefined : next);
 }
 
-test('relationships appear in their tab and never pin a relation bar above the tabs', () => {
+test('отношения показываются во вкладке Связи, а не над панелью', () => {
     const f = fixture();
     const html = render(f);
     assert.doesNotMatch(html, /mi-main-relation/);
@@ -44,7 +44,7 @@ test('relationships appear in their tab and never pin a relation bar above the t
     assert.match(pane(render(f), 'rel'), /Алекс ↔ Игрок/);
 });
 
-test('Pulse money and its reason/editor are inside General information, never the immediate person cards', () => {
+test('деньги с причинами и правкой — в «Общей информации», а не в карточке человека', () => {
     const html = pane(render(fixture()), 'chars');
     const info = html.indexOf('data-mi-sec="profile"');
     assert.ok(info > 0);
@@ -57,7 +57,7 @@ test('Pulse money and its reason/editor are inside General information, never th
     assert.match(inside, /1[\s\u00a0\u202f]?250/);
 });
 
-test('independent money tracking remains visible when personal profile fields are disabled', () => {
+test('деньги видны, даже если профиль выключен', () => {
     for (const mode of ['per-person', 'module', 'display']) {
         const f = fixture();
         if (mode === 'per-person') f.opts.s.tracking.overrides = { алекс: { fields: { profile: false } } };
@@ -70,7 +70,7 @@ test('independent money tracking remains visible when personal profile fields ar
     }
 });
 
-test('money visibility options remain independent within General information', () => {
+test('показ денег настраивается отдельно внутри «Общей информации»', () => {
     const f = fixture();
     f.opts.s.display.pulse.money = 'collapse';
     let html = pane(render(f), 'chars');
@@ -88,7 +88,7 @@ test('money visibility options remain independent within General information', (
     assert.match(html, /data-mi-person="user" data-mi-field="money"/);
 });
 
-test('Pocket only renders in its own pane rather than duplicating its inventory in Pulse', () => {
+test('кармашек показывается только в своей вкладке, не дублируясь в Пульсе', () => {
     const html = render(fixture());
     assert.doesNotMatch(pane(html, 'chars'), /Кармашек|mi-pocket-summary|Значимый ключ/);
     assert.match(pane(html, 'pocket'), /Значимый ключ/);
@@ -96,7 +96,7 @@ test('Pocket only renders in its own pane rather than duplicating its inventory 
     assert.match(pane(html, 'pocket'), /data-mi-act="pocket-remove"/);
 });
 
-test('notes expose an initially open native disclosure with a stable persistence key', () => {
+test('заметки раскрыты по умолчанию и запоминают свёрнутость', () => {
     const f = fixture();
     const html = renderDiary({ title: 'Вечер в кофейне', date: '12.11.2026', entry: 'Длинная запись', aboutUser: 'Он пришёл вовремя.' }, f.opts);
     assert.match(html, /^<details class="mi-diary" data-mi-sec="diary" open>/);
@@ -108,7 +108,7 @@ test('notes expose an initially open native disclosure with a stable persistence
     assert.match(html, /<div class="mi-diary-body">[\s\S]*Длинная запись[\s\S]*data-mi-act="diary"[\s\S]*<\/details>$/);
 });
 
-test('notes escape their summary and hidden body rather than allowing model markup', () => {
+test('заметки экранируют разметку модели', () => {
     const html = renderDiary({ title: '<img src=x onerror=evil()>', date: '<script>date</script>', entry: '<svg onload=evil()>', aboutUser: '<iframe>bad</iframe>' }, fixture().opts);
     assert.doesNotMatch(html, /<img|<script|<svg|<iframe/);
     assert.match(html, /&lt;img/);

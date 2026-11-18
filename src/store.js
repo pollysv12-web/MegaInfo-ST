@@ -125,7 +125,7 @@ export function dismissMark(messageId, id) {
     return true;
 }
 
-// -------------------------------------------------------- manual collections
+// -------------------------------------------------------- ручные правки коллекций
 
 const collectionStamp = (state) => [state?.date, state?.time].filter(Boolean).join(' ');
 
@@ -144,6 +144,9 @@ function rewriteStates(fromId, change) {
 function rememberPocketEdit(edit) {
     const m = meta();
     if (!m) return;
+    // До какого сообщения правка защищает данные от запоздавшего пересчёта.
+    // Новые ответы строятся от уже исправленного состояния, им правка не нужна.
+    edit.upto = Math.max(edit.fromMessage, (ctx().chat?.length ?? 1) - 1);
     m.pocketEdits ??= [];
     m.pocketEdits = m.pocketEdits.filter((e) => !(e.personId === edit.personId && e.itemId === edit.itemId));
     m.pocketEdits.push(edit);
@@ -153,27 +156,32 @@ function rememberPocketEdit(edit) {
 function pocketRevision(state, edit, targetId) {
     if (!state?.people?.[edit.personId]) return state;
     const current = state.pockets?.[edit.personId] ?? [];
-    const historical = targetId !== undefined && targetId < edit.fromMessage;
-    if (historical) return state;
+    if (targetId !== undefined && targetId < edit.fromMessage) return state;
     let items;
     if (edit.removed) {
         items = current.filter((item) => item.id !== edit.itemId
             && !(targetId === edit.fromMessage && normName(item.name) === edit.originalName));
     } else {
+        // Прежние правки без границы защищали только своё сообщение.
+        const upto = Number.isFinite(edit.upto) ? edit.upto : edit.fromMessage;
+        if (targetId !== undefined && targetId > upto) return state;
         let found = false;
         items = current.map((item) => {
             if (item.id !== edit.itemId) return item;
             found = true;
             return { ...item, ...edit.item };
         });
-        // Restore an edited item lost by a stale recalculation of that very reply.
-        // Later real loss/transfer events are allowed to remove it normally.
-        if (!found && targetId === edit.fromMessage) items = [structuredClone(edit.item), ...items].slice(0, pocketLimit({ s: getSettings() }));
+        // Ручное добавление появляется во всех уже существующих ответах; переименованная вещь
+        // возвращается только в своё сообщение (запоздавший пересчёт), а не после настоящей потери.
+        const limit = pocketLimit({ s: getSettings() });
+        if (!found && (edit.added || targetId === edit.fromMessage) && items.length < limit && !items.some((item) => normName(item.name) === normName(edit.item.name))) {
+            items = [...items, structuredClone(edit.item)];
+        }
     }
     return { ...state, pockets: { ...(state.pockets ?? {}), [edit.personId]: items } };
 }
 
-/** Protect user edits/removals when an earlier asynchronous model request finishes. */
+/** Защищает ручные правки и удаления от запоздавшего ответа модели. */
 export function filterManualCollections(state, messageId) {
     if (!state) return state;
     let next = state;
@@ -188,7 +196,7 @@ export function filterManualCollections(state, messageId) {
     return next;
 }
 
-/** Add one explicitly chosen possession. Returns false when owner/name/limit is invalid. */
+/** Добавляет выбранную вручную вещь в это и все следующие сообщения. false — нет человека, названия или места. */
 export function addPocketItem(messageId, personId, value) {
     const state = getData(getMessage(messageId))?.state;
     const name = str(value?.name, 80);
@@ -196,15 +204,13 @@ export function addPocketItem(messageId, personId, value) {
     const items = state.pockets?.[personId] ?? [];
     if (items.length >= pocketLimit({ s: getSettings() }) || items.some((item) => normName(item.name) === normName(name))) return false;
     const item = { id: collectionId('manual', personId, name, String(Date.now())), name, note: str(value?.note, 220), at: collectionStamp(state), manual: true };
-    const edit = { personId, itemId: item.id, item, fromMessage: Number(messageId) };
-    state.pockets = { ...(state.pockets ?? {}), [personId]: [...items, item] };
-    // Active swipe needs its own copy just like model-produced data.
-    syncSwipe(getMessage(messageId));
+    const edit = { personId, itemId: item.id, item, fromMessage: Number(messageId), added: true };
     rememberPocketEdit(edit);
+    rewriteStates(Number(messageId), (next, index) => pocketRevision(next, edit, index));
     return true;
 }
 
-/** Change a single item, or remove it with patch=null; keeps following states/swipes consistent. */
+/** Меняет одну вещь или удаляет её (patch = null) в этом и следующих сообщениях и свайпах. */
 export function updatePocket(messageId, personId, itemId, patch) {
     const state = getData(getMessage(messageId))?.state;
     const item = state?.pockets?.[personId]?.find((entry) => entry.id === itemId);
@@ -218,12 +224,12 @@ export function updatePocket(messageId, personId, itemId, patch) {
         if ((state.pockets[personId] ?? []).some((other) => other.id !== itemId && normName(other.name) === normName(name))) return false;
         edit.item = { ...item, name, note: patch.note === undefined ? item.note : str(patch.note, 220), manual: true };
     }
-    rewriteStates(Number(messageId), (next, index) => pocketRevision(next, edit, index));
     rememberPocketEdit(edit);
+    rewriteStates(Number(messageId), (next, index) => pocketRevision(next, edit, index));
     return true;
 }
 
-/** Dismiss one unresolved promise/question without deleting unrelated plot data. */
+/** Убирает одну сюжетную нить, не трогая остальной сюжет. */
 export function dismissThread(messageId, threadId) {
     const thread = getData(getMessage(messageId))?.state?.world?.threads?.find((entry) => entry.id === threadId);
     if (!thread) return false;

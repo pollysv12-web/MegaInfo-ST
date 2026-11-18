@@ -17,14 +17,14 @@ function initial(opts, values = {}) {
     ] });
 }
 
-test('legacy sexual arousal stays passion; emotional activation has its own number and reason', () => {
+test('прежнее сексуальное возбуждение остаётся страстью; эмоциональный подъём — отдельное число с причиной', () => {
     const opts = options();
     const base = initial(opts);
     delete base.people['алекс'].excitement;
     delete base.people['алекс'].changes;
     const state = apply(opts, base, { people: [{ name: 'Алекс', role: 'char', d: { excitement: 35 }, reasons: { excitement: 'порадовался встрече' } }] });
     const p = state.people['алекс'];
-    assert.equal(p.stats.arousal, 80, 'existing sexual values are never relabelled as emotional values');
+    assert.equal(p.stats.arousal, 80, 'прежняя страсть не превращается в эмоциональное возбуждение');
     assert.equal(p.excitement, 35);
     assert.equal(p.changes.excitement[0].kind, 'initial');
     assert.equal(p.changes.excitement[1].reason, 'порадовался встрече');
@@ -32,10 +32,10 @@ test('legacy sexual arousal stays passion; emotional activation has its own numb
     const rules = People.rules(state, request, opts).join('\n');
     assert.match(rules, /SEXUAL arousal only \(UI label «Страсть»\)/);
     assert.match(rules, /excitement \(UI label «Возбуждение»\)/);
-    assert.equal(base.people['алекс'].excitement, undefined, 'saved source state is not mutated');
+    assert.equal(base.people['алекс'].excitement, undefined, 'сохранённое исходное состояние не меняется');
 });
 
-test('time and scene reasons explain actual clamped effects rather than requested deltas', () => {
+test('причины по времени и по сцене описывают фактическое изменение после ограничений', () => {
     const opts = options(), base = initial(opts);
     const state = apply(opts, base, { time: '12:00', people: [{ name: 'Алекс', role: 'char',
         d: { food: 50, excitement: 20 }, set: { arousal: 100 },
@@ -49,23 +49,23 @@ test('time and scene reasons explain actual clamped effects rather than requeste
     assert.deepEqual(p.changes.arousal.map(c => c.delta), [-10, 30]);
     assert.deepEqual(p.changes.excitement.map(c => c.delta), [-15, 20]);
     assert.deepEqual(p.changes.money, [{ kind: 'event', from: 20000, to: 19550, delta: -450, reason: 'кофе' }]);
-    assert.equal(p.diff.food, 1, 'net visible arrow still represents total effect');
+    assert.equal(p.diff.food, 1, 'стрелка показывает итоговое изменение');
     assert.equal(base.people['алекс'].stats.food, 99);
 });
 
-test('fractional passive changes and absent reasons remain honest', () => {
+test('дробный спад и отсутствующие причины показываются честно', () => {
     const opts = options();
     const base = initial(opts, { stats: { food: 70, hygiene: 50, energy: 70, arousal: 2 } });
     const state = apply(opts, base, { time: '10:05', people: [{ name: 'Алекс', role: 'char', d: { energy: -2 }, reasons: { energy: { invented: 'не принимать объект' } } }] });
     const p = state.people['алекс'];
     assert.equal(p.changes.food[0].delta, -0.4167);
-    assert.equal(p.changes.arousal, undefined, 'quiet time does not raise low passion to a baseline');
+    assert.equal(p.changes.arousal, undefined, 'спокойное время не поднимает низкую страсть');
     assert.equal(p.changes.energy.at(-1).reason, 'Изменение в сцене (модель не уточнила причину)');
     const next = apply(opts, state, {});
-    assert.deepEqual(next.people['алекс'].changes, {}, 'a new reply does not repeat old reasons');
+    assert.deepEqual(next.people['алекс'].changes, {}, 'новый ответ не повторяет старые причины');
 });
 
-test('per-person tracking freezes unselected information and fully tracks the pinned NPC', () => {
+test('выбор полей для человека замораживает невыбранное, закреплённый NPC ведётся полностью', () => {
     const opts = options();
     opts.s.tracking = { roles: { char: 'full', user: 'full', npc: 'short' }, pinnedNpc: 'Кира', overrides: {
         'алекс': { detail: 'full', fields: { stats: false, money: false, outfit: false } },
@@ -81,14 +81,14 @@ test('per-person tracking freezes unselected information and fully tracks the pi
     assert.equal(state.people['алекс'].stats.food, 99);
     assert.equal(state.people['алекс'].money, 20000);
     assert.equal(state.people['алекс'].outfit, 'рубашка');
-    assert.equal(state.people['алекс'].excitement, 20, 'numeric state selection includes emotion; hidden stored values stay unchanged');
+    assert.equal(state.people['алекс'].excitement, 20, 'выбор состояния включает возбуждение; скрытые значения не меняются');
     assert.equal(state.people['кира'].stats.food, 65);
     assert.equal(state.people['стоп'], undefined);
     assert.equal(state.people['алекс'].changes.food, undefined);
     assert.match(People.rules(state, request, opts).join('\n'), /Important pinned NPC: Кира/);
 });
 
-test('short tracking accepts explicitly selected numeric fields without expanding other details', () => {
+test('краткое отслеживание принимает явно выбранные числа, не раскрывая остальное', () => {
     const opts = options();
     opts.s.tracking = { roles: { char: 'full', user: 'full', npc: 'short' }, overrides: { 'кира': { detail: 'short', fields: { stats: true } } } };
     const state = apply(opts, null, { date: '12.11.2026', time: '12:00', people: [{ name: 'Кира', role: 'npc',
@@ -100,7 +100,7 @@ test('short tracking accepts explicitly selected numeric fields without expandin
     assert.equal(state.people['кира'].thought, '');
 });
 
-test('turning emotional tracking off preserves stored emotion but does not accept new changes', () => {
+test('выключенное эмоциональное возбуждение сохраняется, но не меняется', () => {
     const opts = options(), base = initial(opts);
     opts.s.modules.sims.excitement = false;
     const state = apply(opts, base, { time: '12:00', people: [{ name: 'Алекс', role: 'char', d: { excitement: 90, arousal: -5 } }] });

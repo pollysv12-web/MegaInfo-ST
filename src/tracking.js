@@ -1,4 +1,4 @@
-// One policy for what to request from the model and what to show for a person.
+// Единая политика: что просить у модели и что показывать для каждого человека.
 import { normName } from './util.js';
 
 export const TRACKING_FIELDS = Object.freeze({
@@ -11,7 +11,7 @@ const defaults = (detail) => Object.fromEntries(Object.keys(TRACKING_FIELDS).map
     detail === 'full' || (detail === 'short' && ['mood', 'outfit', 'relations'].includes(k)),
 ]));
 
-/** Per-name overrides never change the person's identity or persisted state. */
+/** Настройки для отдельного имени не меняют личность человека и сохранённые данные. */
 export function trackingFor(person, settings) {
     const cfg = settings?.tracking ?? {};
     const role = ['char', 'user', 'npc'].includes(person?.role) ? person.role : 'npc';
@@ -34,15 +34,13 @@ export function trackingFor(person, settings) {
 export function trackingRules(settings, names = {}) {
     const cfg = settings?.tracking;
     if (!cfg) return [];
-    const lines = ['- Track people according to these preferences; omitted fields keep their stored values. "short" means mood, outfit, and relationships only; "off" means do not request updates for that person. Never invent a person merely because they are tracked.'];
-    for (const [role, label] of [['char', 'main bot'], ['user', 'user'], ['npc', 'other NPCs']]) {
-        lines.push(`- Tracking for ${label}: ${trackingFor({ role }, settings).detail}.`);
-    }
-    if (String(cfg.pinnedNpc ?? '').trim()) lines.push(`- Important pinned NPC: ${String(cfg.pinnedNpc).slice(0, 100)}. Track fully when relevant to the scene; keep other NPCs brief. A pinned name does not make an absent person present.`);
+    const role = (r) => trackingFor({ role: r }, settings).detail;
+    const lines = [`- Tracking: main bot ${role('char')}, user ${role('user')}, other NPCs ${role('npc')} ("short" = mood, outfit, relationship; "off" = do not update). Omitted fields keep stored values; tracking never invents a person.`];
+    if (String(cfg.pinnedNpc ?? '').trim()) lines.push(`- Important pinned NPC: ${String(cfg.pinnedNpc).slice(0, 100)} — track fully when present; a pinned name does not make an absent person present.`);
     for (const [name, override] of Object.entries(cfg.overrides ?? {}).slice(0, 30)) {
-        const role = name === normName(names.charName) ? 'char' : name === normName(names.userName) ? 'user'
+        const r = name === normName(names.charName) ? 'char' : name === normName(names.userName) ? 'user'
             : ['char', 'user', 'npc'].includes(override?.role) ? override.role : 'npc';
-        const policy = trackingFor({ name, role }, settings);
+        const policy = trackingFor({ name, role: r }, settings);
         lines.push(`- Tracking override for ${name}: ${policy.detail}; fields to update: ${Object.entries(policy.fields).filter(([, on]) => on).map(([field]) => field).join(', ') || 'none'}.`);
     }
     return lines;
@@ -54,6 +52,6 @@ export function setTrackingOverride(settings, name, override) {
     settings.tracking ??= { roles: { char: 'full', user: 'full', npc: 'short' }, pinnedNpc: '', overrides: {} };
     settings.tracking.overrides ??= {};
     if (override === null) delete settings.tracking.overrides[key];
-    else Object.defineProperty(settings.tracking.overrides, key, { value: structuredClone(override), writable: true, enumerable: true, configurable: true });
+    else settings.tracking.overrides[key] = structuredClone(override);
     return true;
 }

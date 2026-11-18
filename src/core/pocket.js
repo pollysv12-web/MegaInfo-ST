@@ -9,14 +9,14 @@ export const pocketLimit = (opts) => Math.round(clamp(Number(opts.s.modules.pock
 const config = (opts) => opts.s.modules.pocket ?? {};
 const stamp = (state) => [state.date, state.time].filter(Boolean).join(' ');
 
-/** Content plus acquisition moment keeps a new, later acquisition distinct from an old removed item. */
+/** Содержимое плюс момент получения: новая вещь отличается от прежней удалённой с тем же именем. */
 export function collectionId(prefix, ...parts) {
     let hash = 2166136261;
     for (const ch of parts.join('|')) hash = Math.imul(hash ^ ch.codePointAt(0), 16777619) >>> 0;
     return `${prefix}${hash.toString(36)}`;
 }
 
-/** Resolve exact identities only: two NPCs sharing a first name must never exchange belongings. */
+/** Только точные имена: два NPC с одинаковым именем не должны меняться вещами. */
 function owner(state, who, opts) {
     const raw = String(who ?? '').trim();
     const normalized = normName(raw);
@@ -25,12 +25,15 @@ function owner(state, who, opts) {
     let role;
     if (/^(?:user|юзер|\{\{user\}\})$/i.test(raw) || normalized === normName(opts.userName)) role = 'user';
     else if (/^(?:char|бот|\{\{char\}\})$/i.test(raw) || normalized === normName(opts.charName)) role = 'char';
-    const found = people.find((p) => (role ? p.role === role : p.id === raw || normName(p.name) === normalized));
+    // «char» — текущий персонаж: в групповом чате их несколько, поэтому ищем по имени.
+    const target = role === 'char' && /^(?:char|бот|\{\{char\}\})$/i.test(raw) ? normName(opts.charName) : normalized;
+    const found = role === 'user' ? people.find((p) => p.role === 'user')
+        : people.find((p) => p.role !== 'user' && (p.id === raw || normName(p.name) === target));
     if (found) {
         const tracking = trackingFor(found, opts.s);
         return tracking.detail !== 'off' && tracking.fields.pocket ? found : null;
     }
-    // Pocket-only mode still knows the two protagonists; no arbitrary unknown NPC is invented.
+    // Без Пульса кармашек всё равно знает главных героев; неизвестных NPC не придумывает.
     if (!role) return null;
     const name = str(role === 'user' ? opts.userName : opts.charName, 60);
     if (!name) return null;
@@ -39,7 +42,7 @@ function owner(state, who, opts) {
     const id = role === 'user' ? 'user' : normName(name);
     if (Object.hasOwn(state.people, id)) return state.people[id];
     const person = { id, name, role, stats: null, money: null, profile: {}, mood: '', outfit: '', thought: '', diff: {}, affDiff: 0, excitement: 0 };
-    Object.defineProperty(state.people, id, { value: person, enumerable: true, configurable: true, writable: true });
+    state.people[id] = person;
     if (!state.scene.includes(id)) state.scene.push(id);
     return person;
 }
@@ -61,12 +64,11 @@ export function schema(_state, opts) {
 }
 
 export function rules(_state, opts) {
-    if (config(opts).auto === false) return ['- Pockets are managed manually. Do not change or invent anyone’s possessions.'];
+    if (config(opts).auto === false) return ['- Pockets are managed by the user. Do not change anyone’s possessions.'];
     return [
-        `- pocket tracks up to ${pocketLimit(opts)} SIGNIFICANT items currently carried by each protagonist or tracked NPC (keys, a gift, clue, weapon, keepsake). Never list every mundane belonging or fill a quota. Initial scan: add only items already established in the character/context/story; zero is valid.`,
-        '- pocket.add: [{"who":"exact person name","name":"item name","note":"why important or its current condition"}] only for a newly noticed known possession or an actual acquisition. Do not duplicate existing items, invent gifts/clues, or take ownership of objects merely seen nearby.',
-        '- pocket.drop: [{"who":"exact person name","id":"existing item id"}] only after an actual loss, transfer, consumption or deliberate removal. pocket.update: [{"who":"exact person name","id":"existing item id","name":"optional corrected name","note":"optional changed condition"}]. Omit unchanged entries. To transfer an item, drop it from its old owner and add it to its new owner.',
-        '- Update pockets only for people whose tracking preferences include the pocket field. The protagonists are tracked fully by default; an unpinned NPC on short tracking does not need a pocket list.',
+        `- pocket: up to ${pocketLimit(opts)} SIGNIFICANT items each tracked person carries right now (keys, a gift, letter, clue, weapon, keepsake, document). Never fill a quota, never list clothes or everyday trifles; zero is fine.`,
+        '- pocket.add [{"who":"exact name","name":"item","note":"why it matters"}]: an important item established by the character or story, or just picked up/received. Not objects merely seen nearby.',
+        '- pocket.drop [{"who":"exact name","id":"item id"}]: the item is no longer on them — put down and left, handed over, lost, used up, taken away. pocket.update [{"who","id","name?","note?"}]: its state changed. Transfer = drop + add.',
     ];
 }
 

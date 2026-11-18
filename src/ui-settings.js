@@ -224,8 +224,16 @@ export async function initSettingsUi(h) {
         if (this.type === 'checkbox') value = this.checked;
         else if (this.type === 'number') value = Number($(this).val());
         else value = $(this).val();
-        if (path === 'modules.sims.stats.arousal.decay') {
+        if (path === 'modules.sims.stats.arousal.decay' || path === 'modules.sims.excitementDecay') {
             value = Number.isFinite(value) ? Math.min(0, value) : 0;
+            $(this).val(value);
+        }
+        if (path === 'modules.sims.lowMoney') {
+            value = Number.isFinite(value) ? Math.max(0, value) : 0;
+            $(this).val(value);
+        }
+        if (path === 'modules.sims.currency') {
+            value = String(value ?? '').trim().slice(0, 12) || 'auto';
             $(this).val(value);
         }
         if (path === 'display.fontSize') {

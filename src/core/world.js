@@ -23,11 +23,11 @@ export function stateLines(state, opts) {
             : ''}`);
     }
     if (cfg.schedule && w.schedule?.length) {
-        lines.push('Upcoming schedule (characters follow it: they leave or switch activity when the time comes):');
+        lines.push('Upcoming schedule (characters follow it when the time comes):');
         for (const e of w.schedule.slice(0, 5)) lines.push(`  ${e.at.split(' ')[1] ?? ''} ${e.who ? e.who + ' — ' : ''}${e.what}`);
     }
     if (cfg.rumors && w.rumors?.length) {
-        lines.push('Active rumors (NPCs may bring them up in dialogue, they spread and evolve):');
+        lines.push('Active rumors (may come up in dialogue and evolve):');
         for (const r of w.rumors) lines.push(`  [${r.id}] ${r.text}`);
     }
     if (cfg.threads !== false && w.threads?.length) {
@@ -55,17 +55,12 @@ export function rules(state, opts) {
     const cfg = opts.s.modules.world;
     const w = state?.world;
     const r = [];
-    if (cfg.tension) r.push('- world.pace: "active" if the plot moved forward in this reply (action, discoveries, conflict), "slow" for a calm everyday/talk scene. The system computes tension from it.');
-    if (cfg.tension && cfg.twists) r.push('- world.twist: "" normally. Only when tension is 100% (or you really delivered a major twist): one sentence describing the twist.');
-    if (cfg.plot) r.push(`- world.plot: current plot state in 1–3 words (Романтика, Расследование, Бытовуха…)${w?.plot ? ', keep "' + w.plot + '" unless it clearly changed' : ''}. plot_d: progress made in this reply, 0…5.`);
-    if (cfg.schedule) r.push('- world.schedule: 2–4 upcoming activities of characters in story time [{who,time,what}]. Send it ONLY when the plan changed or fewer than 2 future entries are left; otherwise omit the key — the system keeps the old one.');
-    if (cfg.rumors) {
-        const n = Number(cfg.rumorCount) || 4;
-        r.push(`- world.rumor_add: new rumors/gossip that appeared in the world (0–1 per reply; up to ${n} active total, add if fewer). rumor_drop: ids of rumors that were resolved or forgotten, e.g. ["r2"]. Usually both [].`);
-    }
+    if (cfg.tension) r.push(`- world.pace: "active" if the plot moved (action, discovery, conflict), "slow" for calm everyday talk; the system computes tension.${cfg.twists ? ' world.twist: "" unless tension is 100% or you really delivered a major twist (one sentence).' : ''}`);
+    if (cfg.plot) r.push(`- world.plot: current plot in 1–3 words (Романтика, Расследование…)${w?.plot ? `, keep "${w.plot}" unless it clearly changed` : ''}; plot_d: progress in this reply, 0…5.`);
+    if (cfg.schedule) r.push('- world.schedule: 2–4 upcoming activities [{who,time,what}] — only when plans changed or fewer than 2 remain; otherwise omit.');
+    if (cfg.rumors) r.push(`- world.rumor_add: new rumors (0–1 per reply, up to ${Number(cfg.rumorCount) || 4} active); rumor_drop: ids of resolved ones. Usually [].`);
     if (cfg.threads !== false) {
-        r.push(`- world.thread_add: [{"text":"an unresolved promise, planned meeting, unanswered question or event already established in the story","endings":["possible way to resolve it"]}]. Track only meaningful open threads, up to ${threadLimit(opts)} total; normally add zero or one. Never invent a promise or a completed event to fill the list.`);
-        r.push('- world.thread_drop: ["existing thread id"] only when it actually resolved in the story. world.thread_update: [{"id":"existing thread id","text":"updated wording","endings":["optional possible outcome"]}] when facts changed. Possible endings are suggestions, never a prescribed outcome, and must not be narrated as already completed. Omitted keys preserve the open threads.');
+        r.push(`- world.thread_add [{"text":"unresolved promise, planned meeting or open question already in the story","endings":["possible resolution"]}]: up to ${threadLimit(opts)} total, normally zero or one; never invent one to fill the list. thread_drop: ids actually resolved. thread_update [{"id","text","endings"}]: facts changed. Endings are possibilities, never narrated as done.`);
     }
     return r;
 }
