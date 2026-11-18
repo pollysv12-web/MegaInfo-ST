@@ -14,7 +14,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts
+      - name: Зависимости
+        # Сервер пакетов иногда не отвечает вовремя — до трёх попыток с паузой.
+        run: |
+          for attempt in 1 2 3; do
+            npm ci --ignore-scripts --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && exit 0
+            echo "Попытка $attempt не удалась, жду и пробую снова"
+            sleep 30
+          done
+          exit 1
       - name: Юнит-тесты
         run: npm test
       - name: Chromium для браузерных проверок
