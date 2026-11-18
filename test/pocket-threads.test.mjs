@@ -221,3 +221,26 @@ test('ручное закрытие нити удаляет её из следу
     assert.equal(dismissThread(1, 'missing'), false);
     assert.equal(first.world.threads.length, 2);
 });
+
+test('вещь, добавленная в старом ответе, появляется во всех следующих ответах', () => {
+    const history = [message(state()), message(state()), message(state())];
+    context(history);
+    assert.equal(addPocketItem(0, 'алекс', { name: 'Медальон', note: 'Подарок матери' }), true);
+    for (const m of history) {
+        assert.deepEqual(getData(m).state.pockets['алекс'].map((x) => x.name), ['Медальон']);
+        assert.deepEqual(m.swipe_info[0].extra.megainfo.state.pockets['алекс'].map((x) => x.name), ['Медальон']);
+    }
+});
+
+test('ручное переименование не перебивает более поздние изменения модели', () => {
+    const first = applyPocket(state(), { pocket: { add: [{ who: 'Алекс', name: 'Ключ', note: 'Новый' }] } });
+    const id = first.pockets['алекс'][0].id;
+    context([message(first), message(first)]);
+    updatePocket(1, 'алекс', id, { name: 'Ключ от квартиры' });
+    const later = applyPocket(first, { pocket: { update: [{ who: 'Алекс', id, note: 'Погнулся' }] } });
+    later.pockets['алекс'][0].name = 'Ключ от квартиры';
+    const kept = filterManualCollections(later, 5);
+    assert.equal(kept.pockets['алекс'][0].note, 'Погнулся', 'новый ответ сохраняет изменение модели');
+    const stale = filterManualCollections(first, 1);
+    assert.equal(stale.pockets['алекс'][0].name, 'Ключ от квартиры', 'запоздавший пересчёт того же ответа исправляется');
+});

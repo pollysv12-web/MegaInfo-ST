@@ -17,7 +17,7 @@ function makeOpts() {
     };
 }
 
-test('visual payload extraction preserves both exact narrative insertion points', () => {
+test('при извлечении блоков сохраняются точки вставки телефона и карточки', () => {
     const story = `Он достал телефон.\n\n${INLINE_MARKERS.phone}\n\nЗатем показал билет.\n\n${INLINE_MARKERS.card}\n\nИ пошёл дальше.`;
     const raw = story + '\n<megainfo>{"date":"01.01.2026","phone":{"items":[{"text":"Привет"}]}}</megainfo>'
         + '<megainfo_html><div>Билет</div></megainfo_html>';
@@ -29,14 +29,14 @@ test('visual payload extraction preserves both exact narrative insertion points'
     assert.ok(result.text.indexOf(INLINE_MARKERS.card) < result.text.indexOf('И пошёл'));
 });
 
-test('bare JSON fallback also retains the insertion marker in the story', () => {
+test('JSON без тега тоже оставляет маркер вставки в рассказе', () => {
     const result = extractBlocks('Он прочитал сообщение.\n[[mi:phone]]\n\n```json\n{"date":"01.01.2026","time":"12:00","phone":{"items":[{"text":"Жду"}]}}\n```');
     assert.equal(result.bare, true);
     assert.equal(result.text, 'Он прочитал сообщение.\n[[mi:phone]]');
     assert.equal(result.jsonClosed, true);
 });
 
-test('prompt cleaning removes only reserved phone/card markers and retains story text', () => {
+test('очистка промпта убирает только маркеры телефона и карточки, текст остаётся', () => {
     assert.equal(stripPlacementMarkers('До\n\n[[mi:phone]]\n\nПосле [[MI:CARD]] конца.'), 'До\n\nПосле  конца.');
     assert.equal(stripPlacementMarkers('Слева [[ mi : phone ]] справа.'), 'Слева  справа.');
     assert.equal(stripPlacementMarkers('[[mi:other]] [[обычный текст]]'), '[[mi:other]] [[обычный текст]]');
@@ -44,7 +44,7 @@ test('prompt cleaning removes only reserved phone/card markers and retains story
     assert.equal(stripPlacementMarkers(''), '');
 });
 
-test('normal reply instructions place phone/card markers inside the narrative only', () => {
+test('в обычном ответе маркеры телефона и карточки ставятся только внутри рассказа', () => {
     const opts = makeOpts();
     const instruction = buildInstruction({ state: null, request: new Set(['sims', 'phone', 'cards']), opts });
     assert.match(instruction, /\[\[mi:phone\]\]/);
@@ -57,7 +57,7 @@ test('normal reply instructions place phone/card markers inside the narrative on
     assert.doesNotMatch(phoneOnly, /\[\[mi:card\]\]/);
 });
 
-test('separate requests never ask for placement markers or new story actions', () => {
+test('отдельный запрос не просит маркеры и новые действия в сюжете', () => {
     const opts = makeOpts();
     opts.s.modules.cards.when = 'every';
     const instruction = buildInstruction({ state: null, request: new Set(['sims', 'phone', 'cards']), opts, separate: true });
@@ -69,7 +69,7 @@ test('separate requests never ask for placement markers or new story actions', (
     assert.doesNotMatch(instruction, /ALWAYS add one HTML card/);
 });
 
-test('cards-only instructions do not require an unrelated JSON block', () => {
+test('инструкция только для карточек не требует JSON-блока', () => {
     const opts = makeOpts();
     const normal = buildInstruction({ state: null, request: new Set(['cards']), opts });
     const separate = buildInstruction({ state: null, request: new Set(['cards']), opts, separate: true });
@@ -80,14 +80,14 @@ test('cards-only instructions do not require an unrelated JSON block', () => {
     assert.doesNotMatch(separate, /<megainfo>/);
 });
 
-test('diary is supplied as data and displayed by the interface without story duplication', () => {
+test('заметки приходят данными и показываются интерфейсом, не дублируясь в рассказе', () => {
     const instruction = buildInstruction({ state: null, request: new Set(['diary']), opts: makeOpts() });
     assert.match(instruction, /Put the diary only in the JSON data/);
     assert.match(instruction, /directly above or below the reply/);
     assert.doesNotMatch(instruction, /\[\[mi:diary\]\]/);
 });
 
-test('slowburn and bodily needs remain in reminders when their updates are not requested', () => {
+test('Slow burn и потребности остаются в напоминании, даже когда их не обновляют', () => {
     const opts = makeOpts();
     const state = {
         date: '01.01.2026', time: '12:00', location: 'Дом',
@@ -98,7 +98,7 @@ test('slowburn and bodily needs remain in reminders when their updates are not r
     const instruction = buildInstruction({ state, request: new Set(['phone']), opts });
     for (const text of [reminder, instruction]) {
         assert.match(text, /SLOWBURN/);
-        assert.match(text, /сытость 10/);
+        assert.match(text, /food 10/);
         assert.match(text, /голод/);
     }
 });

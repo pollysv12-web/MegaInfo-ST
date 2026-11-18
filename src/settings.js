@@ -1,9 +1,9 @@
 // Настройки расширения: значения по умолчанию, доступ, переопределения для отдельного чата.
 
 export const MODULE = 'megainfo';
-export const VERSION = '0.3.2';
+export const VERSION = '0.3.3';
 
-const SETTINGS_VERSION = 4;
+const SETTINGS_VERSION = 5;
 
 /** Статы sims. decay — изменение за 2 часа времени в ролевой. */
 export const STAT_DEFS = {
@@ -84,7 +84,10 @@ export const DEFAULTS = {
             birthdays: true,      // учитывать д/р в сцене, недостающие даты назначаются один раз
             userThoughts: false,  // разрешить модели писать внутренние мысли {{user}}
             excitement: true,     // эмоциональное возбуждение; не сексуальная страсть
-            currency: '₽',
+            excitementDecay: -15, // спад эмоционального возбуждения за 2 часа
+            reasons: true,        // просить у модели причины изменений и показывать их
+            currency: 'auto',     // auto — модель определяет валюту в первом блоке чата
+            lowMoney: 0,          // порог «почти нет денег»; 0 — по валюте
             stats: {
                 food: { on: true, decay: -10 },
                 hygiene: { on: true, decay: -5 },
@@ -211,21 +214,30 @@ function migrate(s) {
         const arousal = s.modules?.sims?.stats?.arousal;
         if (arousal && Number(arousal.decay) > 0) arousal.decay = -10;
     }
-    // Version 4 adds display/tracking/pocket defaults without reinterpreting
-    // saved sexual arousal values or resetting existing custom settings.
+    if ((Number(s.schemaVersion) || 0) < 5) {
+        // В 0.3.3 валюта по умолчанию определяется для каждого чата. Прежнее значение
+        // по умолчанию «₽» переводим в автоопределение, выбранные вручную валюты сохраняем.
+        if (s.modules?.sims?.currency === '₽') s.modules.sims.currency = 'auto';
+    }
     if ((Number(s.schemaVersion) || 0) < SETTINGS_VERSION) s.schemaVersion = SETTINGS_VERSION;
     return s;
 }
+
+let cached = null;
 
 export function getSettings() {
     const c = SillyTavern.getContext();
     const { extensionSettings } = c;
     if (!extensionSettings[MODULE]) extensionSettings[MODULE] = {};
-    const beforeVersion = extensionSettings[MODULE].schemaVersion;
-    migrate(extensionSettings[MODULE]);
-    const settings = mergeDefaults(extensionSettings[MODULE], structuredClone(DEFAULTS));
-    if (settings.schemaVersion !== beforeVersion) c.saveSettingsDebounced?.();
-    return settings;
+    const current = extensionSettings[MODULE];
+    // Миграция и заполнение значений по умолчанию нужны один раз для объекта настроек.
+    if (cached === current) return current;
+    const beforeVersion = current.schemaVersion;
+    migrate(current);
+    mergeDefaults(current, structuredClone(DEFAULTS));
+    if (current.schemaVersion !== beforeVersion) c.saveSettingsDebounced?.();
+    cached = current;
+    return current;
 }
 
 export function saveSettings() {
@@ -262,6 +274,40 @@ export function moduleOn(key, s = getSettings()) {
 export function phonesExist(s = getSettings()) {
     const ov = getChatOverrides().phones;
     return ov === 'yes' || ov === 'no' ? ov : s.modules.phone.exists;
+}
+
+// ---------------------------------------------------------------- валюта
+
+/** Данные расширения в метаданных текущего чата. */
+function chatMeta() {
+    const meta = SillyTavern.getContext().chatMetadata;
+    if (!meta) return null;
+    meta[MODULE] ??= {};
+    return meta[MODULE];
+}
+
+/** Валюта для показа: ручная для чата → общая из настроек → найденная моделью в этом чате. */
+export function currencyFor(s = getSettings()) {
+    const manual = String(getChatOverrides().currency ?? '').trim();
+    if (manual) return manual;
+    const global = String(s.modules.sims.currency ?? '').trim();
+    if (global && global !== 'auto') return global;
+    return String(chatMeta()?.currency ?? '').trim();
+}
+
+/** Нужно ли попросить модель определить валюту в этом ответе. */
+export function currencyUnknown(s = getSettings()) {
+    if (currencyFor(s)) return false;
+    return (Number(chatMeta()?.currencyTries) || 0) < 3;
+}
+
+export function rememberCurrency(value) {
+    const m = chatMeta();
+    if (!m) return;
+    const text = String(value ?? '').trim().slice(0, 12);
+    if (text && !/^(?:…|\.{3}|auto|none|null|-)$/i.test(text)) m.currency = text;
+    else m.currencyTries = (Number(m.currencyTries) || 0) + 1;
+    saveChatOverrides();
 }
 
 /** Активные статы в порядке определения. */

@@ -1,15 +1,20 @@
-// Reasons belong to one calculated reply; do not infer an event the model did not explain.
+// Причины изменений относятся к одному ответу: код не выдумывает событие, которое модель не объяснила.
 import { str } from '../util.js';
 
 const precise = (n) => Math.round(n * 10000) / 10000;
+/** Другие ключи, под которыми модели иногда присылают ту же причину. */
+const ALIASES = { aff: ['aff', 'affinity', 'rel', 'relation', 'relations', 'симпатия', 'отношение'] };
 
 export function eventReason(entry, field) {
-    const value = entry?.reasons?.[field];
-    return (typeof value === 'string' ? str(value, 240) : '')
-        || 'Изменение в сцене (модель не уточнила причину)';
+    const reasons = entry?.reasons;
+    const keys = ALIASES[field] ?? [field];
+    let value = '';
+    if (reasons && typeof reasons === 'object') value = keys.map((k) => reasons[k]).find((v) => typeof v === 'string' && v.trim()) ?? '';
+    if (!value && typeof entry?.[`${field}_reason`] === 'string') value = entry[`${field}_reason`];
+    return str(value, 240) || 'Изменение в сцене (модель не уточнила причину)';
 }
 
-/** Each number uses actual, clamped effects, including fractional passive decay. */
+/** Сохраняет фактическое изменение после ограничений, включая дробный спад. */
 export function recordChange(person, field, kind, from, to, reason) {
     if (!Number.isFinite(to)) return;
     from = Number.isFinite(from) ? precise(from) : null;

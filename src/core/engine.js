@@ -8,7 +8,7 @@ import * as Marks from './marks.js';
 import * as Loc from './location.js';
 import * as Extras from './extras.js';
 import * as Pocket from './pocket.js';
-import { deepClone, findTagBlock, parseLooseJson, stripTagBlocks } from '../util.js';
+import { deepClone, findTagBlock, parseLooseJson, str, stripTagBlocks } from '../util.js';
 
 export const TAG = 'megainfo';
 export const CARD_TAG = Extras.CARD_TAG;
@@ -52,7 +52,7 @@ export function stateLines(state, opts) {
 export function buildContext(state, opts) {
     const lines = stateLines(state, opts);
     if (!lines.length) return '';
-    return ['[MegaInfo · current story state — calculated by the system, keep the story consistent with it. Do NOT output any status block in this reply.]', ...lines].join('\n');
+    return ['[MegaInfo · story state computed by the system — stay consistent with it. Do NOT output any status block in this reply.]', ...lines].join('\n');
 }
 
 // ---------------------------------------------------------------- запрос блока
@@ -81,7 +81,7 @@ function mergeRules(state, request, opts, prevDiary, separate) {
     if (request.has('phone')) r.push(...Extras.phoneRules(opts, { separate }));
     if (request.has('cards')) r.push(...Extras.cardRules(opts, { separate }));
     if (request.has('pocket')) r.push(...Pocket.rules(state, opts));
-    r.push(`- Keys that are not needed (or did not change, where allowed) may be omitted. All text values in ${opts.language}.`);
+    r.push(`- Omit keys that are not needed or unchanged. Text values in ${opts.language}.`);
     return r;
 }
 
@@ -94,7 +94,7 @@ function mergeRules(state, request, opts, prevDiary, separate) {
  * @param {boolean} [p.separate]    отдельный запрос (только блок) или вставка в обычный ответ
  * @param {object} [p.prevDiary]
  */
-export function buildInstruction({ state, request, opts, separate = false, prevDiary = null, atStart = false }) {
+export function buildInstruction({ state, request, opts, separate = false, prevDiary = null }) {
     const onlyCards = request.size === 1 && request.has('cards');
     if (!request.size) return '';
     const lines = [];
@@ -103,20 +103,18 @@ export function buildInstruction({ state, request, opts, separate = false, prevD
         lines.push(`You are a silent story-state tracker for a roleplay. Read the latest part of the story and reply with ONLY ${payload} — no story text, no comments, no placement markers. Track events that ALREADY happened in the latest reply; never add phone use, objects, dialogue or other story actions.`);
     } else if (onlyCards) {
         lines.push(`[MegaInfo · visual artifacts]\nWrite the story normally. If a card is needed, append its <${CARD_TAG}> payload at the very END of the reply; the system hides the payload and displays the card at its placement marker in the story.`);
-    } else if (atStart) {
-        lines.push(`[MegaInfo · status tracker]\nStart your reply with the <${TAG}> block describing the state at the END of this reply, then write the story.`);
     } else {
-        lines.push(`[MegaInfo · status tracker]\nWrite the story first. Then, at the very END of your reply, append the <${TAG}> block${request.has('cards') ? ` (and the <${CARD_TAG}> card, if needed)` : ''}. Write nothing after it.`);
+        lines.push(`[MegaInfo · status tracker]\nWrite the story first, then append the <${TAG}> block${request.has('cards') ? ` (and the <${CARD_TAG}> card, if needed)` : ''} at the very END. Nothing after it.`);
     }
-    if (!onlyCards) lines.push(`The <${TAG}> block holds ONE valid JSON object (double quotes, no comments, no markdown). The system parses and hides it, so never mention it in the story.`);
+    if (!onlyCards) lines.push(`<${TAG}> holds ONE valid JSON object (double quotes, no comments or markdown). The system hides it — never mention it in the story.`);
 
     const st = stateLines(state, opts);
     lines.push('');
     if (!state && !onlyCards) {
-        lines.push('CURRENT STATE: none yet — this is the first block. Treat every person as new and pick a plausible date, time and location from the story.');
+        lines.push('STATE: none yet — first block. Everyone is new; pick a plausible date, time and location from the story.');
         if (st.length) lines.push(...st);
     } else if (st.length) {
-        lines.push('CURRENT STATE (calculated by the system — trust it, do not recalculate):', ...st);
+        lines.push('STATE (computed by the system — trust it):', ...st);
     }
     const sch = mergeSchema(state, request, opts);
     if (Object.keys(sch).length) {
@@ -182,7 +180,7 @@ export function parseJsonBlock(inner) {
     return parseLooseJson(inner);
 }
 
-const DATA_KEYS = ['date', 'time', 'location', 'people', 'world', 'slowburn', 'marks', 'place', 'diary', 'phone', 'money', 'pocket'];
+const DATA_KEYS = ['date', 'time', 'location', 'people', 'world', 'slowburn', 'marks', 'place', 'diary', 'phone', 'money', 'pocket', 'currency'];
 
 export function looksValid(data) {
     return !!data && typeof data === 'object' && DATA_KEYS.some((k) => data[k] !== undefined);
@@ -236,9 +234,11 @@ export function applyData({ base, fresh = true, data, request, opts }) {
     const place = request.has('location') ? Loc.extractPlace(data, next) : null;
     const diary = request.has('diary') ? Extras.parseDiary(data, next) : null;
     const phone = request.has('phone') ? Extras.parsePhone(data) : null;
+    const currencyAsked = request.has('sims') && opts.currencyUnknown === true && opts.s.modules.sims.showMoney !== false;
+    const currency = currencyAsked ? str(data.currency, 12) : '';
     const issues = next.issues;
     delete next.issues;
-    return { state: next, place, diary, phone, issues };
+    return { state: next, place, diary, phone, issues, currency, currencyAsked };
 }
 
 export { Extras, Loc, Marks, People, Slow, World, Pocket };

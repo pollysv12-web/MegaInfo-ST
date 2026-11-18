@@ -93,7 +93,7 @@
         };
     }
     window.SillyTavern = { getContext, libs: { DOMPurify: window.DOMPurify } };
-    window.toastr = { info() {}, success() {}, warning(m) { console.warn('TOAST', m); }, error(m) { console.error('TOAST', m); } };
+    window.toastr = { info() { return {}; }, success() {}, clear() {}, warning(m) { console.warn('TOAST', m); }, error(m) { console.error('TOAST', m); } };
 
     async function runInterceptor(coreChat, type) {
         if (typeof globalThis.megaInfoInterceptor === 'function') await globalThis.megaInfoInterceptor(coreChat, 100000, () => {}, type);

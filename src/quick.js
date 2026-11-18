@@ -1,7 +1,7 @@
 // Быстрое меню (кнопка в меню «волшебной палочки»): включить/выключить блоки и настройки только этого чата.
 
 import {
-    MODULE_LIST, getChatOverrides, getSettings, saveChatOverrides, saveSettings,
+    MODULE_LIST, currencyFor, getChatOverrides, getSettings, saveChatOverrides, saveSettings,
 } from './settings.js';
 import { esc } from './util.js';
 
@@ -31,6 +31,7 @@ export async function openQuickMenu(onChange) {
             h += `<div class="mi-quick-row"><span><i class="fa-solid ${m.icon}"></i> ${esc(m.label)}</span>${select(`chat:${m.key}`, v, TRI)}</div>`;
         }
         h += `<div class="mi-quick-row"><span><i class="fa-solid fa-mobile-screen"></i> Телефоны в этом мире</span>${select('phones', ov.phones ?? 'inherit', [['inherit', 'как везде'], ['yes', 'есть'], ['no', 'нет']])}</div>`;
+        h += `<div class="mi-quick-row"><span><i class="fa-solid fa-wallet"></i> Валюта этого чата</span><input type="text" class="text_pole" maxlength="12" data-mi-quick="currency" value="${esc(ov.currency ?? '')}" placeholder="${esc(currencyFor(s) || 'определится в первом блоке')}"></div>`;
         h += `<div class="mi-quick-row"><span><i class="fa-solid fa-user"></i> ${esc(c.name1)} — это</span>${select('pronoun', ov.userPronoun ?? 'inherit', [['inherit', 'как везде'], ['he', 'он'], ['she', 'она'], ['they', 'они']])}</div>`;
     }
     h += '</div>';
@@ -50,6 +51,11 @@ export async function openQuickMenu(onChange) {
         } else if (key === 'phones') {
             const o = getChatOverrides();
             if (val === 'inherit') delete o.phones; else o.phones = val;
+            saveChatOverrides();
+        } else if (key === 'currency') {
+            const o = getChatOverrides();
+            const text = String(val ?? '').trim().slice(0, 12);
+            if (text) o.currency = text; else delete o.currency;
             saveChatOverrides();
         } else if (key === 'pronoun') {
             const o = getChatOverrides();

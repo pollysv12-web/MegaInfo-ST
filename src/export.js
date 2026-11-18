@@ -1,6 +1,6 @@
 // Экспорт: все данные инфоблоков чата (JSON или читаемый текст) и дневник отдельно.
 
-import { MODULE, VERSION, getSettings, userPronoun } from './settings.js';
+import { MODULE, VERSION, currencyFor, userPronoun } from './settings.js';
 import { getData, getPlaces } from './store.js';
 import { Extras, Marks } from './core/engine.js';
 import { formatMoney } from './util.js';
@@ -83,7 +83,7 @@ export function exportText() {
         toastr.info('В этом чате пока нет инфоблоков.', 'MegaInfo');
         return;
     }
-    const s = getSettings();
+    const currency = currencyFor();
     const pron = userPronoun();
     const out = [`# MegaInfo: ${data.character} / ${data.user}`, `Экспорт: ${data.exported}`, ''];
     for (const m of data.messages) {
@@ -96,13 +96,13 @@ export function exportText() {
                 if (!p) continue;
                 const bits = [];
                 if (p.stats) bits.push(Object.entries(p.stats).map(([k, v]) => `${k} ${v}`).join(', '));
-                if (p.money !== null && p.money !== undefined) bits.push(formatMoney(p.money, s.modules.sims.currency));
+                if (p.money !== null && p.money !== undefined) bits.push(formatMoney(p.money, currency));
                 if (typeof p.aff === 'number') bits.push(`симпатия ${p.aff}${p.rel ? ' (' + p.rel + ')' : ''}`);
                 if (p.mood) bits.push(p.mood);
                 if (p.outfit) bits.push(p.outfit);
                 out.push(`- ${p.name}: ${bits.join(' · ')}${p.thought ? `\n  «${p.thought}»` : ''}`);
             }
-            if (st.tx?.length) out.push(`Траты: ${st.tx.map((t) => `${t.who} ${formatMoney(t.amount, s.modules.sims.currency)} ${t.note}`).join('; ')}`);
+            if (st.tx?.length) out.push(`Траты: ${st.tx.map((t) => `${t.who} ${formatMoney(t.amount, currency)} ${t.note}`).join('; ')}`);
             if (st.slow) out.push(`Slow burn: ${st.slow.points}/100`);
             if (st.world) {
                 const w = st.world;

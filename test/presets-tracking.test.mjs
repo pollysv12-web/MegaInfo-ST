@@ -4,14 +4,14 @@ import { DEFAULTS, STAT_DEFS, getSettings } from '../src/settings.js';
 import { PRESETS, applyPreset } from '../src/presets.js';
 import { setTrackingOverride, trackingFor, trackingRules } from '../src/tracking.js';
 
-test('v3 settings migrate without reinterpreting passion or resetting user preferences', () => {
+test('настройки прежних версий обновляются без переосмысления страсти и сброса выбора', () => {
     const old = globalThis.SillyTavern;
     const settings = { schemaVersion: 3, theme: 'noir', customCss: 'custom', profileId: 'private-profile', modules: { sims: { npcDetail: 'full', stats: { arousal: { decay: 0, on: false } } }, diary: { mode: 'separate' } } };
     let saves = 0;
     globalThis.SillyTavern = { getContext: () => ({ extensionSettings: { megainfo: settings }, saveSettingsDebounced: () => saves++ }) };
     try {
         const s = getSettings();
-        assert.equal(s.schemaVersion, 4);
+        assert.equal(s.schemaVersion, 5);
         assert.equal(STAT_DEFS.arousal.label, 'Страсть');
         assert.equal(s.modules.sims.stats.arousal.decay, 0);
         assert.equal(s.modules.sims.stats.arousal.on, false);
@@ -23,14 +23,14 @@ test('v3 settings migrate without reinterpreting passion or resetting user prefe
         assert.equal(s.display.pulse.profile, 'collapse');
         assert.equal(s.modules.pocket.maxItems, 5);
         getSettings();
-        assert.equal(saves, 1, 'schema migration saves once');
+        assert.equal(saves, 1, 'обновление настроек сохраняется один раз');
     } finally {
         if (old === undefined) delete globalThis.SillyTavern;
         else globalThis.SillyTavern = old;
     }
 });
 
-test('presets change gameplay explicitly and preserve connection, appearance and individual tracking', () => {
+test('наборы меняют игровые параметры, сохраняя подключение, вид и настройки персонажей', () => {
     const s = structuredClone(DEFAULTS);
     Object.assign(s, { profileId: 'chosen-profile', maxTokens: 7000, theme: 'custom', customCss: '.mine{}', custom: { accent: '#aabbcc' } });
     s.tracking.pinnedNpc = 'Кира';
@@ -43,13 +43,13 @@ test('presets change gameplay explicitly and preserve connection, appearance and
     assert.equal(applyPreset(s, 'passion'), true);
     assert.equal(s.modules.slowburn.speed, 'fast');
     assert.equal(s.modules.slowburn.strict, false);
-    assert.equal(s.modules.sims.stats.arousal.decay, -10, 'fast romance does not add passive sexual growth');
+    assert.equal(s.modules.sims.stats.arousal.decay, -10, 'быстрый роман не добавляет пассивного роста страсти');
     assert.deepEqual({ profileId: s.profileId, maxTokens: s.maxTokens, theme: s.theme, customCss: s.customCss, custom: s.custom, tracking: s.tracking }, preserved);
     assert.equal(PRESETS.length, 6);
     assert.equal(new Set(PRESETS.map(p => p.id)).size, 6);
 });
 
-test('switching presets resets gameplay choices from the previous preset, unknown id changes nothing', () => {
+test('новый набор сбрасывает параметры прежнего, неизвестный набор ничего не меняет', () => {
     const s = structuredClone(DEFAULTS);
     applyPreset(s, 'essentials');
     assert.equal(s.modules.sims.variant, 'lite');
@@ -63,7 +63,7 @@ test('switching presets resets gameplay choices from the previous preset, unknow
     assert.deepEqual(s, before);
 });
 
-test('tracking keeps bot and user detailed, NPCs brief and a pinned NPC detailed', () => {
+test('бот и игрок ведутся подробно, NPC кратко, закреплённый NPC подробно', () => {
     const s = structuredClone(DEFAULTS);
     assert.equal(trackingFor({ role: 'char', name: 'Алекс' }, s).fields.stats, true);
     assert.equal(trackingFor({ role: 'user', name: 'Миша' }, s).fields.pocket, true);
@@ -75,7 +75,7 @@ test('tracking keeps bot and user detailed, NPCs brief and a pinned NPC detailed
     assert.equal(trackingFor({ role: 'npc', name: 'Кира' }, s).fields.pocket, true);
 });
 
-test('individual tracking fields override defaults while off prevents every update', () => {
+test('поля для отдельного человека перекрывают общие, «выкл» запрещает любые обновления', () => {
     const s = structuredClone(DEFAULTS);
     setTrackingOverride(s, '  Кира ', { fields: { stats: true, outfit: false } });
     let policy = trackingFor({ role: 'npc', name: 'КИРА' }, s);
@@ -91,20 +91,20 @@ test('individual tracking fields override defaults while off prevents every upda
     assert.equal(trackingFor({ role: 'npc', name: 'Кира' }, s).fields.stats, false);
 });
 
-test('tracking prompt describes the actual roles, pinned person and field overrides', () => {
+test('инструкция описывает роли, закреплённого человека и личные поля', () => {
     const s = structuredClone(DEFAULTS);
     s.tracking.roles.user = 'off';
     s.tracking.pinnedNpc = 'Кира';
     setTrackingOverride(s, 'Кира', { fields: { money: false } });
     const text = trackingRules(s).join('\n');
-    assert.match(text, /Tracking for user: off/);
+    assert.match(text, /user off/);
     assert.match(text, /Important pinned NPC: Кира/);
     assert.match(text, /absent person present/);
     assert.match(text, /Tracking override for кира: full/);
     assert.doesNotMatch(text.split('Tracking override for кира:')[1], /money/);
 });
 
-test('bot and user named overrides inherit their role in prompt preferences', () => {
+test('личные настройки бота и игрока сохраняют их роль в инструкции', () => {
     const s = structuredClone(DEFAULTS);
     setTrackingOverride(s, 'Алекс', { fields: { outfit: false } });
     setTrackingOverride(s, 'Миша', { role: 'user', fields: { thought: false } });

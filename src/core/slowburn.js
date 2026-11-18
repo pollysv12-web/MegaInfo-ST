@@ -20,9 +20,9 @@ export const SPEEDS = { glacial: 1, slow: 2, medium: 3, fast: 5 };
 
 // Сила задаёт влияние на повествование, скорость — только предел изменения очков.
 const INFLUENCE = {
-    light: 'LIGHT: use the current stage as a quiet undertone when romance is relevant. A glance or choice of words is enough; ordinary plot and dialogue stay central.',
-    medium: 'MEDIUM: make the current stage perceptible through dialogue, how much is shared, comfortable distance and small choices. Let one fitting cue emerge when relevant; do not repeat a checklist in every reply.',
-    strong: 'STRONG: use the current stage as an active constraint on romantic dialogue, trust, private thoughts and the next meaningful choice. Build attraction through earned specific moments; show hesitation or a change of subject instead of jumping ahead. Still advance the surrounding plot.',
+    light: 'LIGHT: a quiet undertone when romance is relevant; plot and dialogue stay central.',
+    medium: 'MEDIUM: let the stage show in dialogue, openness, distance and small choices — one fitting cue when relevant, not a checklist every reply.',
+    strong: 'STRONG: the stage actively limits romantic dialogue, trust and choices; attraction grows through earned moments, hesitation instead of jumping ahead, while the plot still moves.',
 };
 
 const STAGE_GUIDANCE = [
@@ -44,8 +44,10 @@ export function stageIndex(points) {
     return idx;
 }
 
+/** С кем идёт Slow burn. В групповом чате без явной цели — первый участник группы, а не тот, кто сейчас говорит. */
 export function targetName(opts) {
-    return opts.s.modules.slowburn.target || opts.charName || 'Character';
+    const group = Array.isArray(opts.group) ? opts.group.filter(Boolean) : [];
+    return opts.s.modules.slowburn.target || group[0] || opts.charName || 'Character';
 }
 
 export function stateLines(state, opts) {
@@ -56,18 +58,16 @@ export function stateLines(state, opts) {
     const i = stageIndex(points);
     const st = STAGES[i];
     const next = STAGES[i + 1];
-    const lines = [`SLOWBURN ${T} ↔ ${U}: stage ${i + 1}/${STAGES.length} «${st.name}» (${Math.round(points)}/100${next ? `, next stage «${next.name}» at ${next.at}` : ''}).`];
-    lines.push(`  Fits now: ${st.now}.`);
     const influence = opts.s.modules.slowburn.influence ?? 'medium';
-    lines.push(`  Narrative influence ${INFLUENCE[influence] ?? INFLUENCE.medium}`);
-    if (influence !== 'light') lines.push(`  At this stage: ${STAGE_GUIDANCE[i]}`);
-    if (opts.s.modules.slowburn.strict && next) lines.push(`  NOT yet: ${st.not}. Keep ${T}'s own choices within this stage even if ${U} initiates something; answer in character without rewriting ${U}'s action or making them feel or do anything.`);
-    if (influence === 'strong') lines.push(`  Before a romantic escalation, check whether ${T}'s trust and the current stage support it. Sexual arousal alone never unlocks a stage. Express limits through natural dialogue and choices, not an OOC explanation or a forced quarrel.`);
+    const lines = [`SLOWBURN ${T} ↔ ${U}: stage ${i + 1}/${STAGES.length} «${st.name}» (${Math.round(points)}/100${next ? `, next «${next.name}» at ${next.at}` : ''}). Fits now: ${st.now}.`];
+    lines.push(`  Influence ${INFLUENCE[influence] ?? INFLUENCE.medium}${influence !== 'light' ? ` ${STAGE_GUIDANCE[i]}` : ''}`);
+    if (opts.s.modules.slowburn.strict && next) lines.push(`  NOT yet: ${st.not}. Keep ${T}'s own choices within this stage even if ${U} initiates; answer in character without rewriting ${U}'s action.`);
+    if (influence === 'strong') lines.push(`  Sexual arousal alone never unlocks a stage; show limits through natural dialogue and choices, not OOC notes or forced quarrels.`);
     const agency = opts.s.modules.sims?.userThoughts === true
-        ? `Guide ${T}'s romantic choices; ${U}'s inner narration is allowed only within the user's explicit roleplay permissions. Never assume reciprocal attraction or consent.`
-        : `Guide only ${T}'s behaviour, never decide ${U}'s feelings, thoughts, consent or actions.`;
-    lines.push(`  ${agency} Do not display the scale in dialogue. Intensity is not progress; repeated flirting, routine time passing and every new reply need not add points.`);
-    if (sb?.moments?.length) lines.push(`  Key moments so far: ${sb.moments.slice(-4).map((m) => m.text).join('; ')}.`);
+        ? `${U}'s inner narration only within the user's explicit permissions; never assume reciprocal attraction or consent.`
+        : `Guide only ${T}; never decide ${U}'s feelings, thoughts, consent or actions.`;
+    lines.push(`  ${agency} Never show the scale in dialogue; intensity is not progress.`);
+    if (sb?.moments?.length) lines.push(`  Key moments: ${sb.moments.slice(-4).map((m) => m.text).join('; ')}.`);
     return lines;
 }
 
@@ -79,9 +79,7 @@ export function rules(state, opts) {
     const max = SPEEDS[opts.s.modules.slowburn.speed] ?? 2;
     const U = opts.userName || 'User';
     return [
-        `- slowburn.d: how much THIS reply moved the romantic slowburn between ${targetName(opts)} and ${U}: usually 0 or +1; a truly meaningful moment up to +${max}; a quarrel or betrayal −1…−${max}.`,
-        '- slowburn.moment: one short phrase if a key moment happened (first touch, saved them, almost kiss…), otherwise "".',
-        '- Progress must be earned by a concrete change in trust or connection in the story, not sexual arousal, a new message or the selected influence strength. Influence controls narration; speed controls the permitted point change. Never invent a milestone to fill this field.',
+        `- slowburn.d: how much THIS reply moved the romance between ${targetName(opts)} and ${U}: usually 0 or +1, a truly meaningful moment up to +${max}, a quarrel or betrayal −1…−${max}. Only a real change in trust or connection counts — not arousal, routine flirting or a new message. slowburn.moment: a short phrase for a key moment (first touch, almost kiss…), else "".`,
     ];
 }
 

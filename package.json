@@ -1,17 +1,16 @@
 {
   "name": "megainfo-st",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "private": true,
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:browser": "node test/browser/run.cjs",
-    "test:browser:v31": "node test/browser/run-v31.cjs",
-    "test:browser:v32": "node test/browser/run-v32.cjs"
+    "test:browser": "node test/browser/story.cjs && node test/browser/controls.cjs && node test/browser/layout.cjs && node test/browser/editor.cjs",
+    "test:all": "npm test && npm run test:browser"
   },
   "devDependencies": {
     "dompurify": "3.2.6",
     "jquery": "3.7.1",
-    "playwright": "*"
+    "playwright": "1.65.0"
   }
 }

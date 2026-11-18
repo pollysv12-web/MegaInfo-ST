@@ -13,14 +13,27 @@ export function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
 }
 
+/**
+ * Число из ответа модели. Понимает «1 500», «1,500», «1.500.000», «2,350.50», «1,5», «−300 ₽».
+ * Если есть и точка, и запятая, дробной частью считается последний из знаков.
+ */
 export function toNumber(value, fallback = 0) {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const cleaned = value.replace(/[\s  ]/g, '').replace(',', '.').replace(/[−–—]/g, '-').replace(/[^\d.+-]/g, '');
-        const n = parseFloat(cleaned);
-        if (Number.isFinite(n)) return n;
+    if (typeof value !== 'string') return fallback;
+    let s = value.replace(/[\s  ']/g, '').replace(/[−–—]/g, '-').replace(/[^\d.,+-]/g, '');
+    const comma = s.lastIndexOf(',');
+    const dot = s.lastIndexOf('.');
+    const count = (ch) => s.split(ch).length - 1;
+    if (comma >= 0 && dot >= 0) {
+        s = comma > dot ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+    } else if (comma >= 0) {
+        // 1,500 и 1,000,000 — разделители тысяч; 1,5 — дробь.
+        s = /^[+-]?\d{1,3}(?:,\d{3})+$/.test(s) || count(',') > 1 ? s.replace(/,/g, '') : s.replace(',', '.');
+    } else if (count('.') > 1) {
+        s = s.replace(/\./g, '');
     }
-    return fallback;
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : fallback;
 }
 
 export function str(value, max = 300) {
@@ -67,6 +80,9 @@ function escapeRe(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Конец имени тега: пробел, «>» или «/». «<diary-entry>» не считается тегом «diary». */
+const TAG_END = '(?=[\\s/>])';
+
 /**
  * Находит блок <tag>...</tag> в тексте. Последний, если их несколько.
  * Понимает и незакрытый блок в самом конце (если ответ оборвался).
@@ -75,7 +91,7 @@ function escapeRe(s) {
 export function findTagBlock(text, tag) {
     if (!text) return null;
     const t = escapeRe(tag);
-    const re = new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)(</${t}\\s*>|$)`, 'gi');
+    const re = new RegExp(`<${t}${TAG_END}[^>]*>([\\s\\S]*?)(</${t}\\s*>|$)`, 'gi');
     let match;
     let last = null;
     while ((match = re.exec(text)) !== null) {
@@ -92,12 +108,12 @@ export function stripTagBlocks(text, tags) {
     for (const raw of tags) {
         const tag = escapeRe(raw);
         if (!tag) continue;
-        out = out.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}\\s*>`, 'gi'), '');
-        out = out.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*$`, 'i'), '');
+        out = out.replace(new RegExp(`<${tag}${TAG_END}[^>]*>[\\s\\S]*?</${tag}\\s*>`, 'gi'), '');
+        out = out.replace(new RegExp(`<${tag}${TAG_END}[^>]*>[\\s\\S]*$`, 'i'), '');
         // экранированный вариант, если что-то уже прогнало текст через HTML-экранирование
-        out = out.replace(new RegExp(`&lt;${tag}\\b[\\s\\S]*?&lt;/${tag}&gt;`, 'gi'), '');
-        // пустые обёртки ```...``` вокруг вырезанного блока
+        out = out.replace(new RegExp(`&lt;${tag}(?=\\s|&gt;|/)[\\s\\S]*?&lt;/${tag}&gt;`, 'gi'), '');
     }
+    // пустые обёртки ```...``` вокруг вырезанного блока
     out = out.replace(/```(?:json|html)?\s*```/g, '');
     return out.replace(/\n{3,}/g, '\n\n').trim();
 }

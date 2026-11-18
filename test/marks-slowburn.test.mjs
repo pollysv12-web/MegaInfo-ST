@@ -23,7 +23,7 @@ function mark(kind = 'bruise', extra = {}) {
     return { who: 'Кристофер', kind, where: 'левое предплечье', sev: 2, ...extra };
 }
 
-test('specific wound and skin-colour names retain their kinds', () => {
+test('конкретные названия ран и окрашивания кожи сохраняют свой вид', () => {
     for (const [input, expected] of [
         ['пулевое ранение', 'gunshot'], ['bullet wound', 'gunshot'],
         ['ножевое ранение', 'stab'], ['stab wound', 'stab'],
@@ -31,10 +31,10 @@ test('specific wound and skin-colour names retain their kinds', () => {
         ['окрасилась кожа', 'paint'], ['красная краска на коже', 'paint'],
         ['покраснение', 'redness'], ['свежий загар', 'tan'],
     ]) assert.equal(Marks.normalizeKind(input), expected, input);
-    assert.equal(Marks.normalizeKind('distant mark'), 'mark', 'tan is a word, not a fragment inside distant');
+    assert.equal(Marks.normalizeKind('distant mark'), 'mark', '«tan» — отдельное слово, а не часть «distant»');
 });
 
-test('temporary skin colour fades in hours or days, major injury lasts weeks', () => {
+test('краска сходит за часы и дни, серьёзная травма держится неделями', () => {
     const opts = options();
     const initial = update(null, { add: [mark('redness'), mark('paint'), mark('henna'), mark('gunshot')] });
     assert.equal(initial.marks.length, 4);
@@ -48,7 +48,7 @@ test('temporary skin colour fades in hours or days, major injury lasts weeks', (
     assert.match(Marks.markStatus(weeksLater.marks[0], weeksLater, opts).stage, /заживает/);
 });
 
-test('healing speed changes the time required without changing the original event', () => {
+test('скорость заживления меняет срок, не меняя исходное событие', () => {
     const injury = { ...mark('gunshot'), at: '01.03.2025 12:00' };
     const fast = Marks.healMinutes(injury, options({ marks: { healing: 'fast' } }));
     const normal = Marks.healMinutes(injury, options());
@@ -58,7 +58,7 @@ test('healing speed changes the time required without changing the original even
     assert.equal(injury.at, '01.03.2025 12:00');
 });
 
-test('a repeated model entry does not reset healing or mutate the previous message', () => {
+test('повтор следа моделью не сбрасывает заживление и не меняет прошлый ответ', () => {
     const initial = update(null, { add: [mark()] });
     Object.freeze(initial.marks[0]);
     Object.freeze(initial.marks);
@@ -74,7 +74,7 @@ test('a repeated model entry does not reset healing or mutate the previous messa
     assert.equal(initial.marks[0].sev, 2);
 });
 
-test('body modifications require both enabled tracking and an explicit new acquisition', () => {
+test('тату и пирсинг учитываются только при включённой настройке и явном новом приобретении', () => {
     const off = update(null, { add: [mark('tattoo', { acquired: true }), mark('piercing', { acquired: true }), mark('scar')] });
     assert.deepEqual(off.marks.map((m) => m.kind), ['scar']);
     const opts = options({ marks: { trackPermanent: true } });
@@ -85,29 +85,29 @@ test('body modifications require both enabled tracking and an explicit new acqui
         mark('tattoo', { where: 'грудь' }),
     ] }, { opts });
     assert.deepEqual(on.marks.map((m) => m.kind), ['tattoo', 'piercing']);
-    assert.equal(Marks.markStatus(on.marks[0], on, opts).permanent, false, 'fresh tattoo has a healing phase');
+    assert.equal(Marks.markStatus(on.marks[0], on, opts).permanent, false, 'свежая татуировка сначала заживает');
     const healed = update(on, {}, { date: '01.07.2025', opts });
     assert.equal(healed.marks.length, 2);
     assert.match(Marks.markStatus(healed.marks[0], healed, opts).stage, /зажившая татуировка/);
     assert.equal(Marks.markStatus(healed.marks[0], healed, opts).permanent, true);
-    assert.equal(Marks.stateLines(healed, options()).length, 0, 'disabled setting hides inherited body modifications immediately');
+    assert.equal(Marks.stateLines(healed, options()).length, 0, 'выключенная настройка сразу скрывает тату и пирсинг');
     assert.equal(update(healed).marks.length, 0);
 });
 
-test('explicit resolved IDs are removed while other marks retain their healing clock', () => {
+test('явно вылеченные следы убираются, остальные заживают дальше', () => {
     const initial = update(null, { add: [mark('paint'), mark('cut')] });
     const washed = update(initial, { heal: [initial.marks[0].id] }, { time: '12:10' });
     assert.deepEqual(washed.marks.map((m) => m.kind), ['cut']);
     assert.equal(washed.marks[0].at, initial.marks[1].at);
 });
 
-test('slowburn influence changes narrative guidance without changing progress limits', () => {
+test('сила влияния Slow burn меняет подсказки, но не пределы роста', () => {
     const base = { slow: { points: 23, moments: [], stageUpDate: '' } };
     for (const influence of ['light', 'medium', 'strong']) {
         const opts = options({ slowburn: { influence } });
         const next = { date: '01.03.2025' };
         Slow.apply(next, base, { slowburn: { d: 30 } }, opts);
-        assert.equal(next.slow.points, 25, 'same speed means the same maximum point gain');
+        assert.equal(next.slow.points, 25, 'одинаковая скорость — одинаковый предел роста');
         const text = Slow.stateLines(next, opts).join('\n');
         assert.match(text, new RegExp(influence.toUpperCase()));
         assert.match(text, /never decide.*feelings, thoughts, consent or actions/);
@@ -115,7 +115,7 @@ test('slowburn influence changes narrative guidance without changing progress li
     }
 });
 
-test('strict slowburn respects daily lock and records each identical daily milestone once', () => {
+test('строгий Slow burn соблюдает дневной лимит и записывает момент один раз', () => {
     const opts = options();
     const base = { slow: { points: 13, moments: [], stageUpDate: '01.03.2025' } };
     const next = { date: '01.03.2025' };
