@@ -98,6 +98,12 @@ jobs:
                 && echo "Страница выпуска v$ver создана" || echo "::warning::Тег v$ver поставлен, но страницу выпуска создать не удалось."
             fi
           done
+          # Отметка «Latest» — всегда у самой новой версии, даже если старые выпуски пересоздавались позже.
+          newest=$(grep -oP '^## \K\d+\.\d+\.\d+(?= )' CHANGELOG.md | sort -V | tail -1)
+          if [ -n "$newest" ] && gh release view "v$newest" >/dev/null 2>&1; then
+            gh release edit "v$newest" --latest >/dev/null \
+              && echo "v$newest отмечен как последний выпуск" || echo "::warning::Не удалось отметить v$newest как последний выпуск."
+          fi
 
   # Ветки, уже целиком вошедшие в main, удаляются; запуски проверок для коммитов,
   # которых больше нет в истории main, убираются из списка.

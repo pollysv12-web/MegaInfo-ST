@@ -11,7 +11,7 @@
 **Расширения → Install extension**, адрес:
 
 ```text
-https://github.com/pollysv12-web/MegaInfo-ST
+https://github.com/SandriaUstala/MegaInfo-ST
 ```
 
 Ветка — `main`. Каждый выпуск отмечен тегом (`v0.3.3` и т. д.).
@@ -28,7 +28,7 @@ https://github.com/pollysv12-web/MegaInfo-ST
 ## Нашли ошибку?
 
 1. **Расширения → MegaInfo → Логи и диагностика → «Скопировать диагностику»**.
-2. Откройте [вкладку Issues](https://github.com/pollysv12-web/MegaInfo-ST/issues/new/choose)
+2. Откройте [вкладку Issues](https://github.com/SandriaUstala/MegaInfo-ST/issues/new/choose)
    и выберите **«Ошибка»**, вставьте диагностику и опишите, что произошло.
 
 Пожалуйста, не публикуйте ключи API и личные переписки целиком.
